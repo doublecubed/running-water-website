@@ -1,0 +1,60 @@
+- id: street
+  kind: exterior
+  aliases:
+    - street
+    - main street
+  itemIds:
+    - lighter
+  npcIds: []
+  connections:
+    - toId: alley
+      distanceKm: 0.2
+      modes:
+        - foot
+        - taxi
+      compassLabel: north
+    - toId: alley
+      distanceKm: 0.2
+      modes:
+        - bus
+      transitLineId: bus-1
+    - toId: highway
+      distanceKm: 1.5
+      modes:
+        - foot
+        - taxi
+      compassLabel: east
+    - toId: highway
+      distanceKm: 1.5
+      modes:
+        - bus
+      transitLineId: bus-1
+    - toId: docks
+      distanceKm: 6
+      modes:
+        - foot
+        - taxi
+    - toId: precinct
+      distanceKm: 0.4
+      modes:
+        - foot
+      compassLabel: south
+    - toId: diner
+      distanceKm: 0.3
+      modes:
+        - foot
+      compassLabel: west
+    - toId: grand-hotel
+      distanceKm: 0.2
+      modes:
+        - foot
+  x: 200
+  'y': 320
+  text:
+    en:
+      name: Main Street
+      description: >-
+        A busy street lined with shuttered shops. The alley is north; the coast
+        highway runs east; the police precinct is south; a corner diner sits west; the
+        Grand Hotel's entrance is here too, just off the street; a long, exposed road
+        also leads straight to the docks if you're willing to walk it.

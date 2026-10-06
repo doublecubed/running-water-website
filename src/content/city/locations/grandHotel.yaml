@@ -1,0 +1,82 @@
+# The 3-floor Grand Hotel — same building, kept together in one file.
+- id: grand-hotel
+  kind: interior
+  exteriorId: street
+  floorNumber: 1
+  aliases:
+    - grand hotel
+    - the grand hotel
+    - hotel
+  itemIds: []
+  npcIds: []
+  connections:
+    - toId: street
+      distanceKm: 0.2
+      modes:
+        - foot
+    - toId: grand-hotel-floor-2
+      distanceKm: 0.05
+      modes:
+        - foot
+      compassLabel: up
+  x: 350
+  'y': 200
+  text:
+    en:
+      name: The Grand Hotel
+      description: >-
+        A once-grand lobby, its marble floor scuffed and its chandelier dark in
+        patches. A staircase leads up to the guest floors. The street is back outside.
+- id: grand-hotel-floor-2
+  kind: interior
+  exteriorId: street
+  floorNumber: 2
+  aliases:
+    - grand hotel second floor
+    - second floor
+    - floor 2
+  itemIds: []
+  npcIds: []
+  connections:
+    - toId: grand-hotel
+      distanceKm: 0.05
+      modes:
+        - foot
+      compassLabel: down
+    - toId: grand-hotel-floor-3
+      distanceKm: 0.05
+      modes:
+        - foot
+      compassLabel: up
+  x: 350.36649214659684
+  'y': 172.24770262931494
+  text:
+    en:
+      name: Grand Hotel Second Floor
+      description: >-
+        A dim hallway lined with numbered doors, all of them shut. The stairs lead
+        down to the lobby, or up to the third floor.
+- id: grand-hotel-floor-3
+  kind: interior
+  exteriorId: street
+  floorNumber: 3
+  aliases:
+    - grand hotel third floor
+    - third floor
+    - floor 3
+  itemIds: []
+  npcIds: []
+  connections:
+    - toId: grand-hotel-floor-2
+      distanceKm: 0.05
+      modes:
+        - foot
+      compassLabel: down
+  x: 348.4074930666691
+  'y': 144.53984838195223
+  text:
+    en:
+      name: Grand Hotel Third Floor
+      description: >-
+        The top floor, quieter than the rest. A single window at the end of the hall
+        looks out over the street below. The stairs lead back down.

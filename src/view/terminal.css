@@ -1,0 +1,903 @@
+/*
+ * Terminal-style view. This file is intentionally the ONLY place styling
+ * decisions live — swapping to a different visual layout later means
+ * writing a new view module + stylesheet against the same engine output,
+ * not touching this one. See CLAUDE.md, "View layer owns time and rendering."
+ */
+
+:root {
+  color-scheme: dark;
+  --bg: #0b0f0c;
+  --fg: #baffc9;
+  --dim: #5f8a6d;
+  --accent: #ffd166;
+  --money: #7fdc8a;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--fg);
+  font-family: "Cascadia Code", "Consolas", ui-monospace, monospace;
+  font-size: 15px;
+}
+
+#app {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 1rem;
+}
+
+.layout {
+  display: flex;
+  align-items: flex-start;
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.terminal {
+  flex: 1;
+  min-width: 0;
+  max-width: 760px;
+  /* Fixed-height column (viewport minus #app padding): the log flexes to
+     fill it, so a scene image crops the log instead of growing the page. */
+  height: calc(100vh - 4rem);
+  height: calc(100dvh - 4rem);
+  min-height: 24rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  --image-panel-height: clamp(160px, 35vh, 360px);
+}
+
+/* Holds the scene image and the log; the log overlays it when expanded. */
+.terminal__stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.terminal__status-bar {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: 0.85em;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+}
+
+.terminal__clock {
+  color: var(--accent);
+}
+
+.terminal__money {
+  color: var(--money);
+}
+
+.terminal__location {
+  font-size: 0.85em;
+  letter-spacing: 0.03em;
+  color: var(--fg);
+}
+
+.terminal__log {
+  flex: 1;
+  min-height: 0;
+  background: var(--bg);
+  overflow-y: auto;
+  padding: 1rem;
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  white-space: pre-wrap;
+  line-height: 1.5;
+}
+
+.terminal__line {
+  margin: 0 0 0.5rem 0;
+}
+
+.terminal__line--input {
+  color: var(--accent);
+}
+
+/*
+ * Click-to-jot picking mode (a bare "jot down" — see
+ * TerminalView.enterJotPickMode/handleLogClick). Only lines of actual
+ * game output are jottable, so the hover highlight deliberately excludes
+ * the player's own echoed input, rendered menu text, and the picker's
+ * own instruction line — matching exactly what handleLogClick accepts a
+ * click on, so hovering never invites a click that would do nothing.
+ */
+.terminal__log--jot-picking .terminal__line:not(.terminal__line--input):not([data-role="jot-prompt"]) {
+  cursor: pointer;
+}
+
+.terminal__log--jot-picking .terminal__line:not(.terminal__line--input):not([data-role="jot-prompt"]):hover {
+  background: color-mix(in srgb, var(--accent) 20%, transparent);
+  border-radius: 2px;
+}
+
+.terminal__log--jot-picking .terminal__menu {
+  cursor: default;
+}
+
+/*
+ * Marks a location change in the scrollback (see TerminalView.consumeEvents)
+ * — purely a visual scan aid, so it's easy to find "what happened since I
+ * arrived here" at a glance. Dashed to read as a soft section break, not
+ * a hard rule.
+ */
+.terminal__divider {
+  border: none;
+  border-top: 1px dashed var(--dim);
+  margin: 0.85rem 0;
+}
+
+/*
+ * A menu screen (see view/menu/MenuFlow.ts) is rendered as one tinted
+ * block rather than plain lines, so it visually reads as "you're in a
+ * multiple-choice menu" at a glance. The tint is keyed off
+ * data-menu-kind, which MenuFlow itself never inspects — it's a purely
+ * cosmetic tag set per screen (see travelMenus.ts's MENU_KIND) — so a
+ * future non-travel menu kind (e.g. "dialogue") can get its own color
+ * here without touching any menu logic. "travel" is defined explicitly,
+ * even though it matches the default right now, to make that extension
+ * point obvious rather than implicit.
+ */
+.terminal__menu {
+  margin: 0.5rem 0;
+  padding: 0.75rem 1rem;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.terminal__menu[data-menu-kind="travel"] {
+  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.terminal__menu .terminal__line {
+  margin: 0 0 0.35rem 0;
+}
+
+.terminal__menu .terminal__line:last-child {
+  margin-bottom: 0;
+}
+
+.terminal__input-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  padding: 0.5rem 0.75rem;
+}
+
+.terminal__prompt {
+  color: var(--accent);
+}
+
+.terminal__input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  color: var(--fg);
+  font: inherit;
+}
+
+.side-panel {
+  width: 220px;
+  flex-shrink: 0;
+  padding: 1rem;
+  border: 1px dashed var(--dim);
+  border-radius: 4px;
+  color: var(--dim);
+  font-size: 0.85em;
+}
+
+.side-panel__title {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9em;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--fg);
+}
+
+.side-panel__list {
+  margin: 0;
+  padding-left: 1.1em;
+  line-height: 1.6;
+}
+
+/* Placeholder art for a closed panel slot — see TerminalView's CLOSED_PANEL_ART. */
+.side-panel__art {
+  margin: 0;
+  text-align: center;
+  line-height: 1.3;
+  color: var(--dim);
+  font-family: inherit;
+}
+
+/*
+ * Visual world map — a fixed overlay rather than a third side-panel
+ * column, so it doesn't fight the .layout flex row's width budget and can
+ * take up real screen space when open. See TerminalView.renderWorldMap
+ * and src/mapview/MapView.ts.
+ */
+.world-map-overlay {
+  position: fixed;
+  inset: 2rem;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  z-index: 10;
+}
+
+/*
+ * An element's own `display` declaration beats the browser's default
+ * `[hidden] { display: none }` UA rule (author styles always win over UA
+ * styles) — so `display: flex` above would otherwise defeat the `hidden`
+ * attribute/property entirely, keeping the overlay visible (and every
+ * later `.hidden = true` a no-op) regardless of what TerminalView sets.
+ */
+.world-map-overlay[hidden] {
+  display: none;
+}
+
+.world-map-overlay__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--dim);
+}
+
+.world-map-overlay__title {
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.9em;
+  color: var(--accent);
+}
+
+.world-map-overlay__toolbar button {
+  font: inherit;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
+.world-map-overlay__canvas {
+  flex: 1;
+  min-height: 0;
+}
+
+/*
+ * The notebook page-view overlay — a separate full-screen VIEW MODE, same
+ * category as .world-map-overlay, but deliberately NOT sized like it: a
+ * map earns edge-to-edge screen space, a small pocket notebook should not
+ * read as another full desktop window. Capped NARROWER than .terminal (the
+ * column the player already reads) and centered, so the terminal's own
+ * edges stay visible bleeding out from behind it left and right — reading
+ * as a small object laid on top of the log, not a same-size panel swapped
+ * in for it. See docs/systems/notebooks.md's "The notebook page interface."
+ */
+.notebook-overlay {
+  position: fixed;
+  inset: 2rem;
+  display: flex;
+  justify-content: center;
+  z-index: 10;
+}
+
+.notebook-overlay[hidden] {
+  display: none;
+}
+
+.notebook-overlay__book {
+  width: 100%;
+  max-width: 600px;
+  max-height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  box-shadow: 0 0 0 6px color-mix(in srgb, var(--bg) 60%, black 10%);
+}
+
+.notebook-overlay__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--dim);
+}
+
+.notebook-overlay__title {
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.9em;
+  color: var(--accent);
+}
+
+.notebook-overlay__page-indicator {
+  white-space: pre-line;
+  text-align: center;
+  line-height: 1.2;
+}
+
+.notebook-overlay__page-indicator,
+.notebook-overlay__meter {
+  color: var(--dim);
+  font-size: 0.85em;
+}
+
+.notebook-overlay__toolbar button {
+  font: inherit;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
+.notebook-overlay__toolbar button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/*
+ * The ruled background is FUNCTIONAL, not decorative: --notebook-row is
+ * the exact `line-height` of one text row everywhere below (the header,
+ * read-mode text, the editing textarea). Content is full-width and wraps
+ * NATURALLY (no character-per-line concept anywhere — see
+ * docs/systems/notebooks.md's "The notebook page interface" for why an
+ * earlier fixed-character-width/hard-wrap approach was dropped); a
+ * uniform `line-height` is enough on its own to keep every rendered row
+ * landing on a ruled line, regardless of WHERE within that row the
+ * browser's own word-wrap breaks — the ruled grid only cares about
+ * vertical rhythm, never horizontal character position.
+ */
+.notebook-overlay__page {
+  --notebook-row: 1.75rem;
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0.75rem 1.5rem;
+  background-image: repeating-linear-gradient(
+    to bottom,
+    transparent,
+    transparent calc(var(--notebook-row) - 1px),
+    color-mix(in srgb, var(--dim) 15%, transparent) calc(var(--notebook-row) - 1px),
+    color-mix(in srgb, var(--dim) 15%, transparent) var(--notebook-row)
+  );
+}
+
+/* One full blank ruled row between entries — an actual skipped line, not an arbitrary margin, so the grid stays aligned all the way down the page. */
+.notebook-block {
+  margin: 0 0 var(--notebook-row) 0;
+}
+
+/*
+ * The auto-inserted header renders visually distinct from the player's
+ * own writing (smaller, muted) — see docs/systems/notebooks.md — but is
+ * still locked to exactly ONE ruled row via height/line-height (rather
+ * than letting its smaller font-size shrink the row), so it always takes
+ * its own line and the note's actual text starts fresh on the next one.
+ */
+.notebook-block__header {
+  height: var(--notebook-row);
+  line-height: var(--notebook-row);
+  font-size: 0.75em;
+  color: var(--dim);
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.notebook-block__text,
+.notebook-block__editor {
+  display: block;
+  width: 100%;
+  line-height: var(--notebook-row);
+  font: inherit;
+  white-space: pre-wrap;
+  /* Natural word-wrap (breaks at spaces where possible); this is only a safety net so one pathological unbroken string can't overflow the page horizontally — it does NOT define a fixed line width. */
+  overflow-wrap: break-word;
+}
+
+.notebook-block__text s {
+  color: var(--dim);
+}
+
+.notebook-block__editor {
+  color: var(--fg);
+  /* A faint tint is the only visual difference from read mode — border/padding stay at 0 so its JS-set `height` (TerminalView.autosizeNotebookTextarea) is an exact fit for its content, not thrown off by extra chrome. */
+  background: color-mix(in srgb, var(--accent) 8%, transparent);
+  border: none;
+  padding: 0;
+  margin: 0;
+  outline: none;
+  resize: none;
+  overflow: hidden;
+  height: var(--notebook-row);
+}
+
+.mapview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  /* Dragging/panning is otherwise indistinguishable to the browser from a
+     text-selection drag, which paints a distracting selection highlight
+     over the page as you move the pointer. */
+  user-select: none;
+}
+
+.mapview__edge {
+  stroke: var(--dim);
+  stroke-width: 2;
+}
+
+.mapview__edge--curved {
+  stroke: var(--accent);
+}
+
+.mapview__edge-arrow {
+  fill: var(--dim);
+  pointer-events: none;
+}
+
+.mapview__node circle {
+  fill: var(--fg);
+  stroke: var(--bg);
+  stroke-width: 1;
+  cursor: pointer;
+}
+
+/* A more muted green for interior locations, reusing the theme's own dim/secondary green (already used for borders/dim text) rather than inventing a new color. */
+.mapview__node--interior circle {
+  fill: var(--dim);
+}
+
+.mapview__node text {
+  fill: var(--fg);
+  font: inherit;
+  font-size: 12px;
+  dominant-baseline: middle;
+}
+
+.mapview__tooltip {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  white-space: pre-line;
+  background: var(--bg);
+  color: var(--fg);
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font: inherit;
+  font-size: 12px;
+  max-width: 260px;
+}
+
+/*
+ * The case board overlay — same full-screen category as .world-map-overlay
+ * (edge-to-edge, not the smaller centered .notebook-overlay treatment),
+ * since a corkboard, like the map, earns real screen space. See
+ * docs/systems/case-board.md.
+ */
+.board-overlay {
+  position: fixed;
+  inset: 2rem;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  z-index: 10;
+}
+
+.board-overlay[hidden] {
+  display: none;
+}
+
+.board-overlay__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--dim);
+}
+
+.board-overlay__title {
+  flex: 1;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  font-size: 0.9em;
+  color: var(--accent);
+}
+
+.board-overlay__toolbar button {
+  font: inherit;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
+.board-overlay__canvas-wrapper {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  position: relative;
+}
+
+.board-overlay__empty-hint {
+  padding: 1.5rem;
+  color: var(--dim);
+}
+
+.board-canvas {
+  position: relative;
+}
+
+.board-strings {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 5;
+  pointer-events: none;
+}
+
+.board-strings__hit {
+  stroke: transparent;
+  stroke-width: 16;
+  pointer-events: stroke;
+  cursor: pointer;
+}
+
+.board-strings__line {
+  stroke-width: 2;
+  pointer-events: none;
+}
+
+.board-strings__line--pending {
+  stroke: var(--accent);
+  stroke-dasharray: 4 3;
+}
+
+.board-strings__line--red {
+  stroke: #c0392b;
+}
+
+.board-strings__line--blue {
+  stroke: #2980b9;
+}
+
+.board-strings__line--yellow {
+  stroke: #f1c40f;
+}
+
+.board-strings__line--green {
+  stroke: #27ae60;
+}
+
+.board-node {
+  position: absolute;
+  z-index: 1;
+  width: 160px;
+  min-height: 60px;
+  background: color-mix(in srgb, var(--accent) 10%, var(--bg));
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  padding: 0.5rem;
+  cursor: grab;
+  user-select: none;
+}
+
+/* Strings render above nodes by default (z-index: 5 on .board-strings) so
+   the corkboard-string look reads clearly; a node only rises above them
+   while the player is actually looking at it. */
+.board-node:hover,
+.board-node:focus-within {
+  z-index: 10;
+}
+
+.board-node--note {
+  background: color-mix(in srgb, #f1c40f 15%, var(--bg));
+}
+
+.board-node__header {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.board-node__pin {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--dim);
+  border: 1px solid var(--bg);
+  cursor: grab;
+}
+
+.board-node__pin:hover,
+.board-node__pin:active {
+  background: var(--accent);
+  transform: scale(1.2);
+}
+
+.board-node__edit {
+  position: absolute;
+  top: 2px;
+  left: 4px;
+  font: inherit;
+  line-height: 1;
+  color: var(--dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  opacity: 0;
+}
+
+.board-node:hover .board-node__edit,
+.board-node:focus-within .board-node__edit {
+  opacity: 1;
+}
+
+.board-node__remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  font: inherit;
+  line-height: 1;
+  color: var(--dim);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+}
+
+.board-node__text {
+  font-size: 0.85em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin-top: 1rem;
+}
+
+.board-node__text--editable {
+  width: 100%;
+  min-height: 40px;
+  color: var(--fg);
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: vertical;
+  font: inherit;
+  font-size: 0.85em;
+  padding: 0;
+}
+
+.board-color-picker {
+  position: absolute;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  background: var(--bg);
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  z-index: 20;
+}
+
+.board-color-picker__swatch {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  border: 1px solid var(--dim);
+  cursor: pointer;
+  padding: 0;
+}
+
+.board-color-picker__swatch--red {
+  background: #c0392b;
+}
+
+.board-color-picker__swatch--blue {
+  background: #2980b9;
+}
+
+.board-color-picker__swatch--yellow {
+  background: #f1c40f;
+}
+
+.board-color-picker__swatch--green {
+  background: #27ae60;
+}
+
+.board-color-picker__remove {
+  font: inherit;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.board-overlay__add-node {
+  position: relative;
+}
+
+.board-overlay__add-node-toggle {
+  font: inherit;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  padding: 0.35rem 0.75rem;
+  cursor: pointer;
+}
+
+.board-add-node-menu {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 4px;
+  padding: 6px;
+  min-width: 160px;
+  background: var(--bg);
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  z-index: 1;
+}
+
+.board-add-node-menu button,
+.board-add-node-menu input {
+  font: inherit;
+  color: var(--fg);
+  background: transparent;
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+  padding: 0.3rem 0.5rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.board-add-node-menu__empty {
+  color: var(--dim);
+  padding: 0.3rem 0.5rem;
+}
+
+/*
+ * Scene image pane (see imagePane.ts / docs/systems/image-pane.md). The panel
+ * is a fixed-size part of the UI regardless of the image: the picture sits
+ * centered at its natural size, scaled down (never up) to fit, with the panel
+ * background as padding. The figure shrinks to the image's rendered size
+ * (inline-block) so percent-positioned hotspots line up with the picture, not
+ * the padding. That is why this uses max-width/max-height rather than
+ * object-fit on a panel-sized <img>.
+ */
+.terminal__image {
+  flex: none;
+  height: var(--image-panel-height);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid var(--dim);
+  border-radius: 4px;
+}
+
+/* An author display rule would otherwise beat the [hidden] attribute. */
+.terminal__image[hidden] {
+  display: none;
+}
+
+.scene-image {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  margin: 0;
+  line-height: 0;
+  opacity: 1;
+  transition-property: opacity;
+  transition-timing-function: ease;
+  /* transition-duration is set inline per-swap by imagePane.ts, so JS and CSS never disagree on the duration. */
+}
+
+/* Fade-to-blank state, toggled by imagePane.ts on the outgoing figure (before removal) and briefly on the incoming one (removed next frame to trigger the fade-in). Old-adventure-game style: fade out, THEN swap, THEN fade in — never a crossfade. */
+.scene-image--fade-hidden {
+  opacity: 0;
+}
+
+.scene-image__img {
+  display: block;
+  max-width: 100%;
+  max-height: calc(var(--image-panel-height) - 2px);
+}
+
+.scene-image__hotspot {
+  position: absolute;
+  padding: 0;
+  border: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+}
+
+.scene-image__hotspot:hover,
+.scene-image__hotspot:focus-visible {
+  border-color: var(--accent);
+  background: rgba(255, 255, 255, 0.08);
+  outline: none;
+}
+
+/*
+ * With an image showing, the log is cropped from the top (it just gets the
+ * remaining height). Expanded (hover, or pinned by the toggle) it overlays
+ * the image from the bottom, leaving a strip of the image's top edge visible
+ * so hotspots there and the toggle stay reachable.
+ */
+.terminal__log--expanded {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: calc(100% - var(--image-panel-height) * 0.25);
+  z-index: 2;
+  box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.6);
+}
+
+.terminal__log-toggle {
+  position: absolute;
+  top: 0.35rem;
+  right: 0.35rem;
+  z-index: 3;
+  font: inherit;
+  font-size: 0.75em;
+  color: var(--fg);
+  background: var(--bg);
+  border: 1px solid var(--dim);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.terminal__log-toggle[hidden] {
+  display: none;
+}
+
+/* Pinned to "expanded" or "collapsed" rather than the default "auto". */
+.terminal__log-toggle--active {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}

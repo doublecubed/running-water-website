@@ -1,0 +1,68 @@
+- id: alley
+  image:
+    src: alley.svg
+    text:
+      en:
+        alt: A foggy alley at night; a stranger stands against the wall.
+    hotspots:
+      - text:
+          en:
+            label: Talk to the stranger
+        command: talk informant
+        rect: [42, 38, 16, 62]
+      - text:
+          en:
+            label: Head south to the street
+        command: south
+        rect: [0, 75, 100, 25]
+  kind: exterior
+  aliases:
+    - alley
+    - back alley
+  itemIds:
+    - streetlamp
+    - ledger
+  npcIds:
+    - informant
+  connections:
+    - toId: office
+      distanceKm: 0.1
+      modes:
+        - foot
+      compassLabel: in
+    - toId: street
+      distanceKm: 0.2
+      modes:
+        - foot
+        - taxi
+      compassLabel: south
+    - toId: street
+      distanceKm: 0.2
+      modes:
+        - bus
+      transitLineId: bus-1
+    - toId: gazette-stand
+      distanceKm: 0.1
+      modes:
+        - foot
+  x: 200
+  'y': 120
+  text:
+    en:
+      name: Back Alley
+      description: >-
+        A narrow alley behind the building, thick with fog. A stranger leans
+        against the wall. Your office door is right here; the alley opens south
+        onto the street.
+- id: gazette-stand
+  kind: interior
+  exteriorId: alley
+  aliases:
+    - gazette stand
+  connections: []
+  x: 157.49654883286752
+  'y': 134.69205848323136
+  text:
+    en:
+      name: Gazette Stand
+      description: A dark gazette stand, with a guy standing behind it.

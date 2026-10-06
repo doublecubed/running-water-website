@@ -1,0 +1,27 @@
+- id: office
+  kind: interior
+  exteriorId: alley
+  aliases:
+    - office
+    - your office
+    - my office
+  itemIds:
+    - case-file
+    - desk
+    - cabinet-glass
+  npcIds: []
+  connections:
+    - toId: alley
+      distanceKm: 0.1
+      modes:
+        - foot
+      compassLabel: out
+  x: 199.5981991629095
+  'y': 63.76199877262679
+  text:
+    en:
+      name: Your Office
+      description: >-
+        A cramped office lit by a flickering desk lamp. A case file sits atop the
+        writing desk, which has two drawers — one on the left, one on the right.
+        The door leads out to the alley.

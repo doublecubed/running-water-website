@@ -1,0 +1,61 @@
+- id: docks
+  kind: exterior
+  aliases:
+    - docks
+    - the docks
+    - dock
+  itemIds: []
+  npcIds: []
+  connections:
+    - toId: highway
+      distanceKm: 3
+      modes:
+        - taxi
+      compassLabel: west
+    - toId: highway
+      distanceKm: 3
+      modes:
+        - bus
+      transitLineId: bus-1
+    - toId: street
+      distanceKm: 6
+      modes:
+        - foot
+        - taxi
+    - toId: pier
+      distanceKm: 4
+      modes:
+        - ship
+      compassLabel: east
+      costsMinor:
+        ship: 1000
+  x: 681.7172688589046
+  'y': 401.51372604123077
+  text:
+    en:
+      name: The Docks
+      description: >-
+        Cold, salt-stung air and the creak of moored boats. The coast highway runs
+        west; a long walk back to the street heads off through the warehouses; a ferry
+        to the far pier leaves from the east end.
+- id: docks-office
+  kind: interior
+  exteriorId: docks
+  aliases:
+    - docks office
+  itemIds: []
+  npcIds: []
+  connections:
+    - toId: docks
+      distanceKm: 0.1
+      modes:
+        - foot
+  x: 692.0927935246033
+  'y': 353.34866444918447
+  text:
+    en:
+      name: Docks Office
+      description: >-
+        A "building" created from a shipping container, which looks like it should
+        have been thrown into the depths of the bay years ago. It serves as the
+        administrative office for the docks.

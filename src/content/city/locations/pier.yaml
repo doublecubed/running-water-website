@@ -1,0 +1,25 @@
+- id: pier
+  kind: exterior
+  aliases:
+    - pier
+    - the pier
+    - far pier
+    - the far pier
+  itemIds: []
+  npcIds: []
+  connections:
+    - toId: docks
+      distanceKm: 4
+      modes:
+        - ship
+      compassLabel: west
+      costsMinor:
+        ship: 1000
+  x: 928.2512916445107
+  'y': 357.8440329607325
+  text:
+    en:
+      name: The Far Pier
+      description: >-
+        A weathered pier across the water, reachable only by boat. Gulls circle a
+        stack of unclaimed crates. The ferry back to the docks waits to the west.

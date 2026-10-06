@@ -1,0 +1,59 @@
+- id: diner
+  image:
+    src: diner.svg
+    text:
+      en:
+        alt: A narrow diner; the cook stands behind the counter.
+    hotspots:
+      - text:
+          en:
+            label: Talk to Rosa
+        command: talk rosa
+        rect: [42, 22, 16, 50]
+      - text:
+          en:
+            label: Head back east to the street
+        command: east
+        rect: [0, 75, 100, 25]
+  kind: interior
+  exteriorId: street
+  aliases:
+    - diner
+    - corner diner
+  itemIds: []
+  npcIds:
+    - cook-rosa
+  connections:
+    - toId: street
+      distanceKm: 0.3
+      modes:
+        - foot
+      compassLabel: east
+  x: 40
+  'y': 320
+  text:
+    en:
+      name: Corner Diner
+      description: >-
+        A narrow diner smelling of coffee and fry grease, a couple of regulars hunched
+        at the counter. Main Street is back east.
+- id: diner-upper-floor
+  kind: interior
+  exteriorId: street
+  aliases:
+    - corner diner upper floor
+    - diner upper floor
+    - diner upstairs
+  itemIds: []
+  npcIds: []
+  connections:
+    - toId: diner
+      distanceKm: 0.1
+      modes:
+        - foot
+  x: 39.300166379461416
+  'y': 292.6426465010896
+  text:
+    en:
+      name: Corner Diner Upper Floor
+      description: upper floor

@@ -1,0 +1,39 @@
+# This file contains definitions for furniture objects in the game.
+
+# HOUSEHOLD ITEMS
+- id: cabinet-glass
+  kind: setpiece
+  portable: false
+  announceOnRevisit: false
+  aliases:
+    - cabinet
+    - the cabinet
+  text:
+    en:
+      name: cabinet
+      description: A tall wooden cabinet with double glass doors. The dust on the glass prevents you from seeing inside.
+  parts:
+    - id: cabinet-glass-doors
+      aliases:
+        - glass doors
+        - doors
+      defaultStateId: closed
+      text:
+        en:
+          name: the glass doors
+          description: The cabinet's glass doors are closed.
+      states:
+        - id: closed
+          enterAliases:
+            - close
+          text:
+            en:
+              name: closed
+              description: The cabinet's glass doors are closed.
+        - id: open
+          enterAliases:
+            - open
+          text:
+            en:
+              name: open
+              description: The cabinet's glass doors are open, revealing the shelves inside.

@@ -1,0 +1,7 @@
+node_modules/
+dist/
+*.local
+
+# AI agent metadata
+.aider*
+.claude/

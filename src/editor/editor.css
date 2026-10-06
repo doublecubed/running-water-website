@@ -1,0 +1,737 @@
+html,
+body {
+  margin: 0;
+  height: 100%;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  font-family: system-ui, sans-serif;
+}
+
+#editor-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.editor__toolbar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 12px;
+}
+
+.editor__toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Same author-CSS-beats-`[hidden]` issue as `.editor__object-list` —
+   `draftActionsGroup` gets `.hidden` toggled directly (see
+   setActiveDraftKind in main.ts), and the `display: flex` above would
+   otherwise silently keep it (and its Save/Cancel buttons) on screen. */
+.editor__toolbar-group[hidden] {
+  display: none;
+}
+
+/* The trailing (draft Save/Cancel) group rides along with the language
+   selector at the toolbar's far right — margin-left: auto here pushes
+   both it and everything after it (just the language selector) to the
+   end, so this group doesn't need its own separate right-alignment. */
+.editor__toolbar-group--trailing {
+  margin-left: auto;
+}
+
+.editor__toolbar-separator {
+  align-self: stretch;
+  width: 1px;
+  margin: 2px 0;
+  background: #444;
+}
+
+.editor__toolbar button {
+  padding: 8px 16px;
+  font: inherit;
+  cursor: pointer;
+  background: #2a2a2a;
+  color: inherit;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
+.editor__toolbar button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.editor__toolbar button.is-active {
+  background: #3a6ea5;
+  border-color: #5a9eda;
+}
+
+.editor__language-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  font-size: 0.9em;
+  color: #aaa;
+}
+
+.editor__language-label select {
+  font: inherit;
+  background: #2a2a2a;
+  color: inherit;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 4px 8px;
+}
+
+.editor__notice {
+  margin: 0 12px 12px;
+  color: #e0b040;
+}
+
+.editor__status {
+  margin: 0 12px 12px;
+  color: #8ab4f8;
+  min-height: 1.2em;
+}
+
+.editor__body {
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.editor__map {
+  flex: 1;
+  min-height: 0;
+}
+
+.editor__sidebar {
+  width: 300px;
+  flex: none;
+  padding: 16px;
+  overflow-y: auto;
+  border-left: 1px solid #444;
+  background: #1f1f1f;
+}
+
+/* The object inspector is always on-screen (not just while editing), so it
+   gets the remaining width next to the fixed-width object list instead of
+   the location/prefab sidebars' narrow fixed width. */
+.editor__sidebar--object {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+/* The NPC inspector follows the same always-on-screen shape as the object inspector — see .editor__sidebar--object above. */
+.editor__sidebar--npc {
+  width: auto;
+  flex: 1;
+  min-width: 0;
+}
+
+.editor__inspector-placeholder {
+  margin: 24px 0 0;
+}
+
+.editor__sidebar h2 {
+  margin: 0 0 12px;
+  font-size: 1.1em;
+}
+
+.editor__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+/* Same author-CSS-beats-`[hidden]` issue as `.editor__object-list` — several
+   `.editor__field` rows (exteriorId, "Start from prefab", "announce on
+   every revisit") get `.hidden` toggled directly, and the `display: flex`
+   above would otherwise silently keep them visible. One general rule here
+   covers every current and future `.editor__field` row instead of needing
+   a per-row override each time this pattern gets reused. */
+.editor__field[hidden] {
+  display: none;
+}
+
+.editor__field label {
+  font-size: 0.85em;
+  color: #aaa;
+}
+
+.editor__field input,
+.editor__field select,
+.editor__field textarea {
+  font: inherit;
+  background: #2a2a2a;
+  color: inherit;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 8px;
+  resize: vertical;
+}
+
+.editor__field--row {
+  flex-direction: row;
+  gap: 12px;
+}
+
+.editor__field--row .editor__field {
+  flex: 1;
+  margin-bottom: 0;
+}
+
+.editor__sidebar-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.editor__sidebar-actions button {
+  flex: 1;
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+  background: #2a2a2a;
+  color: inherit;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
+.editor__field--checkbox label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+  color: #e0e0e0;
+}
+
+.editor__object-list {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* The `display: flex` above otherwise beats the `hidden` attribute's
+   UA-stylesheet `display: none` — author CSS always wins over UA styles
+   regardless of specificity, so this panel would stay visible even while
+   `.hidden = true` in JS unless we say so explicitly here. */
+.editor__object-list[hidden] {
+  display: none;
+}
+
+/*
+ * The Objects tab's list lives in a fixed-width column (search box above
+ * the scrolling list) next to the always-on inspector, which takes the
+ * rest of the width — see `.editor__sidebar--object`. Only the object list
+ * (not the prefab list, which still shows/hides its sidebar and can use
+ * the full width) gets this treatment.
+ */
+.editor__object-list-panel {
+  width: 320px;
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  border-right: 1px solid #444;
+  background: #1a1a1a;
+}
+
+/* Same author-CSS-beats-`[hidden]` issue as `.editor__object-list` above —
+   this wrapper needs its own override too. */
+.editor__object-list-panel[hidden] {
+  display: none;
+}
+
+.editor__object-list-panel .editor__object-list {
+  padding: 8px;
+}
+
+.editor__object-search {
+  margin: 12px 12px 0;
+  font: inherit;
+  background: #2a2a2a;
+  color: inherit;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.editor__object-placement-filter {
+  margin: 8px 12px 0;
+  font: inherit;
+  background: #2a2a2a;
+  color: inherit;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.editor__object-list-item.is-active {
+  border-color: #5a9eda;
+  background: #2c3e50;
+}
+
+.editor__object-list-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  text-align: left;
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+  background: #2a2a2a;
+  color: inherit;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
+/* Marks a row whose object currently has a Placement entry (a location or a
+   container's part) — see isObjectPlaced. An unbadged row is "in storage":
+   a catalog entry with nowhere it's currently standing. */
+.editor__object-placed-badge {
+  flex: none;
+  font-size: 0.75em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  background: #2c5a3e;
+  color: #bfe8cf;
+}
+
+.editor__object-list-item:hover {
+  border-color: #5a9eda;
+}
+
+.editor__sidebar h3 {
+  margin: 16px 0 8px;
+  font-size: 1em;
+  color: #ccc;
+}
+
+.editor__parts {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.editor__part,
+.editor__state {
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 10px;
+  background: #232323;
+}
+
+.editor__state {
+  background: #262626;
+  margin: 8px 0;
+}
+
+.editor__part-heading,
+.editor__state-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85em;
+  color: #aaa;
+  margin-bottom: 8px;
+}
+
+.editor__part-heading button,
+.editor__state-heading button {
+  font: inherit;
+  cursor: pointer;
+  background: #3a1f1f;
+  color: #f0a0a0;
+  border: 1px solid #6a3333;
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.editor__schedule-slots {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+
+.editor__schedule-slot {
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 10px;
+  background: #232323;
+}
+
+.editor__schedule-slot-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.85em;
+  color: #aaa;
+  margin-bottom: 8px;
+}
+
+.editor__schedule-slot-heading button {
+  font: inherit;
+  cursor: pointer;
+  background: #3a1f1f;
+  color: #f0a0a0;
+  border: 1px solid #6a3333;
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.editor__weekday-checkboxes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 10px;
+}
+
+.editor__weekday-checkboxes .editor__field--checkbox {
+  margin: 0;
+}
+
+.editor__warning {
+  margin: 4px 0 0;
+  font-size: 0.8em;
+  color: #e0b040;
+}
+
+.editor__structure {
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  background: #232323;
+}
+
+.editor__structure summary {
+  cursor: pointer;
+  font-size: 0.85em;
+  color: #ccc;
+}
+
+.editor__structure-tree-container {
+  margin-top: 8px;
+}
+
+.editor__structure-tree,
+.editor__structure-tree ul {
+  list-style: none;
+  margin: 0;
+  padding-left: 16px;
+  border-left: 1px solid #3a3a3a;
+}
+
+.editor__structure-tree {
+  padding-left: 0;
+  border-left: none;
+}
+
+.editor__structure-node {
+  font-size: 0.85em;
+  padding: 2px 0 2px 8px;
+}
+
+.editor__structure-link {
+  font: inherit;
+  cursor: pointer;
+  background: none;
+  border: none;
+  padding: 0;
+  color: #6aa9e0;
+  text-decoration: underline;
+}
+
+.editor__structure-flags {
+  color: #888;
+  font-size: 0.9em;
+}
+
+.editor__checklist {
+  max-height: 160px;
+  overflow-y: auto;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 8px;
+  background: #232323;
+}
+
+.editor__checklist-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.9em;
+  padding: 3px 0;
+}
+
+/* Shared by the location sidebar's "Objects here" section and the object
+   sidebar's per-part "Contents" section — see buildPlacementPicker's doc
+   comment in main.ts. */
+.editor__placement-section {
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 8px 10px;
+  margin: 8px 0 12px;
+  background: #232323;
+}
+
+.editor__placement-section h3,
+.editor__placement-section h4 {
+  margin: 0 0 8px;
+  font-size: 0.9em;
+  color: #ccc;
+}
+
+.editor__placement-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.editor__placement-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 8px;
+  font-size: 0.9em;
+  background: #2a2a2a;
+  border: 1px solid #444;
+  border-radius: 4px;
+}
+
+.editor__placement-item button {
+  font: inherit;
+  cursor: pointer;
+  background: #3a1f1f;
+  color: #f0a0a0;
+  border: 1px solid #6a3333;
+  border-radius: 4px;
+  padding: 2px 8px;
+}
+
+.editor__placement-picker {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.editor__placement-picker select {
+  flex: 1;
+  min-width: 120px;
+  font: inherit;
+  background: #2a2a2a;
+  color: inherit;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 8px;
+}
+
+.editor__placement-picker label {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85em;
+  color: #ccc;
+  white-space: nowrap;
+}
+
+.editor__placement-picker button {
+  font: inherit;
+  cursor: pointer;
+  background: #2a2a2a;
+  color: inherit;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 10px;
+}
+
+.editor__remove-button {
+  width: 100%;
+  margin-top: 12px;
+  padding: 8px 12px;
+  font: inherit;
+  cursor: pointer;
+  background: #3a1f1f;
+  color: #f0a0a0;
+  border: 1px solid #6a3333;
+  border-radius: 4px;
+}
+
+.mapview {
+  display: block;
+  width: 100%;
+  height: 100%;
+  background: #111;
+  /* Dragging a node (or panning) is otherwise indistinguishable to the
+     browser from a text-selection drag, which paints a distracting
+     selection highlight over the page as you move the pointer. */
+  user-select: none;
+}
+
+.mapview__edge {
+  stroke: #555;
+  stroke-width: 2;
+}
+
+.mapview__edge--curved {
+  stroke: #6a8;
+}
+
+.mapview__edge-arrow {
+  fill: #555;
+  pointer-events: none;
+}
+
+.mapview__node.is-selected circle {
+  fill: #ffd15f;
+}
+
+.mapview__curve-handle circle {
+  fill: #ffd15f;
+  stroke: #7a5c00;
+  stroke-width: 1;
+  cursor: grab;
+}
+
+.mapview__node circle {
+  fill: #5fb0ff;
+  stroke: #d0e8ff;
+  stroke-width: 1;
+}
+
+/* A muted variant of the same blue for interior locations, so they read as distinct from exteriors at a glance without a legend. */
+.mapview__node--interior circle {
+  fill: #3a6ea5;
+  stroke: #7a9cbf;
+}
+
+.mapview__node text {
+  fill: #e0e0e0;
+  font-size: 12px;
+  dominant-baseline: middle;
+}
+
+.mapview__tooltip {
+  position: absolute;
+  z-index: 1;
+  pointer-events: none;
+  white-space: pre-line;
+  background: #2a2a2a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  max-width: 260px;
+}
+
+/* --- Image editor popup (src/editor/imageEditor.ts) --------------------- */
+
+.editor__image-dialog {
+  width: min(720px, 90vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  background: #1a1a1a;
+  color: #e0e0e0;
+  border: 1px solid #444;
+  border-radius: 6px;
+  padding: 16px;
+}
+
+.editor__image-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.6);
+}
+
+.editor__image-dialog h2 {
+  margin: 0 0 12px;
+  font-size: 1.1em;
+}
+
+/* Sized by its <img> child (display: block, normal flow) so the draw
+   surface and hotspot markers below, both position: absolute, can use
+   percent coordinates that line up with the RENDERED picture — same
+   contract as src/view/imagePane.ts's hotspot buttons. */
+.editor__image-dialog__preview {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+  margin-bottom: 12px;
+}
+
+.editor__image-dialog__img {
+  display: block;
+  max-width: 100%;
+  max-height: 50vh;
+}
+
+.editor__image-dialog__draw-surface {
+  position: absolute;
+  inset: 0;
+  cursor: crosshair;
+}
+
+.editor__image-dialog__draw-surface.is-disabled {
+  cursor: not-allowed;
+}
+
+.editor__image-dialog__hotspot {
+  position: absolute;
+  border: 1px dashed #ffd166;
+  background: rgba(255, 209, 102, 0.15);
+  pointer-events: auto;
+  cursor: pointer;
+}
+
+.editor__image-dialog__ghost {
+  position: absolute;
+  border: 1px dashed #5a9eda;
+  background: rgba(90, 158, 218, 0.2);
+  pointer-events: none;
+}
+
+.editor__image-dialog__hotspot-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.editor__image-dialog__hotspot-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px;
+  background: #222;
+  border: 1px solid #333;
+  border-radius: 4px;
+}
+
+.editor__image-dialog__hotspot-row.is-selected {
+  border-color: #ffd166;
+}
+
+.editor__image-dialog__hotspot-row .editor__field {
+  margin-bottom: 0;
+  min-width: 90px;
+}
+
+.editor__image-dialog__hotspot-row input[type="number"] {
+  width: 70px;
+}
