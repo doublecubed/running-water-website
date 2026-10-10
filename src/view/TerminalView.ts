@@ -24,6 +24,7 @@ import { buildTopicsScreen } from "./menu/npcMenus";
 import { buildPanelMenuScreen } from "./menu/panelMenus";
 import { buildDirectConnectionsScreen } from "./menu/travelMenus";
 import { loadFromStorage, saveToStorage } from "./save/browserSaveStore";
+import { minutesSinceEpoch } from "./wallClock";
 
 /**
  * Which `Command.kind`s can produce a `ResolutionChoice`-bearing ambiguous
@@ -47,8 +48,15 @@ const LOG_MODE_LABEL_KEY = {
 } as const;
 
 /** Shared box markup for a side panel's title + item list — see .side-panel in terminal.css. */
-function renderSidePanel(titleKey: string, items: string[]): string {
-  const listItems = items.map((item) => `<li>${item}</li>`).join("");
+function renderSidePanel(titleKey: string, items: Array<string | { label: string; command: string }>): string {
+  // An item with a `command` renders as a button that runs it through the normal input path (see the click handler in the constructor).
+  const listItems = items
+    .map((item) =>
+      typeof item === "string"
+        ? `<li>${item}</li>`
+        : `<li><button type="button" class="side-panel__link" data-command="${item.command.replace(/&/g, "&amp;").replace(/"/g, "&quot;")}">${item.label}</button></li>`,
+    )
+    .join("");
   return `<h2 class="side-panel__title">${t(titleKey)}</h2><ul class="side-panel__list">${listItems}</ul>`;
 }
 
@@ -104,7 +112,8 @@ const SIDE_PANELS: Record<PanelContentId, PanelContent> = {
       const visited = new Set(ctx.engine.getVisitedLocationIds());
       const names = Object.values(ctx.engine.getState().locations)
         .filter((location) => ctx.showAllLocations || visited.has(location.id))
-        .map((location) => t(location.nameKey));
+        // A click types and runs "go to <name>" like the player would — a location's display name is always one of its own aliases (world.test.ts).
+        .map((location) => ({ label: t(location.nameKey), command: `go to ${t(location.nameKey).toLowerCase()}` }));
       return renderSidePanel("ui.locationsPanelTitle", names);
     },
   },
@@ -290,6 +299,13 @@ export class TerminalView {
       left: this.root.querySelector('[data-role="panel-left"]')!,
       right: this.root.querySelector('[data-role="panel-right"]')!,
     };
+    // Clickable side-panel entries (the locations list) feed their command through runInput, same as a typed line or a hotspot click.
+    for (const slotEl of Object.values(this.panelEls)) {
+      slotEl.addEventListener("click", (event) => {
+        const command = (event.target as HTMLElement).closest<HTMLElement>("[data-command]")?.dataset.command;
+        if (command) void this.runInput(command).then(() => this.updateStatusBar());
+      });
+    }
     this.worldMapOverlayEl = this.root.querySelector('[data-role="world-map-overlay"]')!;
     this.worldMapCanvasEl = this.root.querySelector('[data-role="world-map-canvas"]')!;
     this.worldMapModeButton = this.root.querySelector('[data-role="world-map-mode"]')!;
@@ -676,6 +692,23 @@ export class TerminalView {
 
     this.logEl.appendChild(container);
     this.logEl.scrollTop = this.logEl.scrollHeight;
+  }
+
+  /**
+   * Makes the status-bar clock follow the visitor's real local time: syncs the
+   * engine immediately, then re-syncs every `intervalMs` (cheap; 15 s keeps the
+   * minute display from lagging). Only meaningful for an engine built with
+   * `externalClock` — otherwise travel would advance the clock too and be
+   * overwritten on the next tick. Returns a stop function.
+   */
+  startWallClock(intervalMs = 15_000): () => void {
+    const tick = (): void => {
+      this.engine.syncClock(minutesSinceEpoch(this.engine.getState().clock.epoch));
+      this.updateStatusBar();
+    };
+    tick();
+    const handle = setInterval(tick, intervalMs);
+    return () => clearInterval(handle);
   }
 
   /**

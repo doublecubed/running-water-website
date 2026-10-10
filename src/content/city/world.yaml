@@ -1,186 +1,51 @@
-labels:
-  - id: street
-    text:
-      en:
-        name: the street
-  - id: official
-    text:
-      en:
-        name: the law
-  - id: worker
-    text:
-      en:
-        name: the working folk
-facts:
-  - id: courier
-    text:
-      en: A courier in a grey coat dropped the ledger in the alley Tuesday night.
+labels: []
+facts: []
 npcs:
-  - id: informant
-    aliases:
-      - informant
-      - man
-      - stranger
-    locationId: alley
-    labels:
-      - street
-    dialogueRules:
-      - when:
-          all:
-            - memory:
-                verb: took
-                subject: player
-                object: object:ledger
-            - npcStat: suspicion
-              op: <
-              value: 2
-        effects:
-          - suspicion: 2
-          - trust: -1
-        text:
-          en: >-
-            "{npcKey}" stares at your coat pocket. "That ledger was not yours to
-            lift. I saw you." His voice drops. "Keep walking."
-      - when:
-          npcStat: suspicion
-          op: '>='
-          value: 2
-        text:
-          en: '"{npcKey}" turns his back to you and says nothing at all.'
-    text:
-      en:
-        name: the informant
-        description: A nervous man in a long coat who keeps glancing over his shoulder.
-        dialogue: >-
-          "{npcKey}" mutters that a ledger went missing from the gazette stand.
-          "Try the diner. Rosa sees everyone who comes through. Sweet-talk the
-          law first, she trusts the ones the law trusts."
-  - id: officer-hale
-    aliases:
-      - hale
-      - officer
-      - officer hale
-      - cop
-    locationId: precinct
-    labels:
-      - official
-    schedule:
-      - fromHour: 8
-        toHour: 18
-        locationId: precinct
-      - fromHour: 18
-        toHour: 24
-        locationId: diner
-    dialogueRules:
-      - when:
-          all:
-            - playerKnows: courier
-            - not:
-                flag: case.ledger.solved
-        effects:
-          - setFlag: case.ledger.solved
-        text:
-          en: >-
-            "{npcKey}" listens, then closes his notebook. "A courier, dropping
-            it in the alley. That squares with the rest. Good work. Consider the
-            ledger closed."
-      - when:
-          flag: case.ledger.solved
-        text:
-          en: >-
-            "{npcKey}" tips his cap. "Ledger is closed. Nothing more for you
-            here."
-      - when:
-          not:
-            flag: talkedTo.officer-hale
-        effects:
-          - reputation:
-              scope: worker
-              delta: 1
-        text:
-          en: >-
-            "{npcKey}" looks you over. "Detective, is it. Rosa at the diner
-            keeps her ear to the floor. Tell her I sent you. I'll put in a good
-            word."
-    text:
-      en:
-        name: Officer Haley
-        description: A heavyset patrolman with a notebook he never seems to write in.
-        dialogue: >-
-          "{npcKey}" nods. "Ledger's gone missing, I hear. Find out who left it
-          in that alley and bring it to me."
-  - id: cook-rosa
-    aliases:
-      - rosa
-      - cook
-    locationId: diner
-    labels:
-      - worker
+  - id: herald
+    aliases: [herald, landing page, page, the page, man, boy]
+    locationId: studio-landing
+    labels: []
     dialogueRules:
       - when:
           not:
-            flag: talkedTo.cook-rosa
-        effects:
-          - trust: 1
+            flag: talkedTo.herald
         text:
           en: >-
-            "{npcKey}" studies you a moment. "Coffee's on the counter. Come back
-            when you've got more than questions."
+            {npcKey} bows so deeply his feathered cap nearly falls off. "Hail,
+            traveller! I am the Landing Page. It is my duty to greet all who
+            arrive. This is a game, and also a website. You may click on things,
+            or type commands such as 'examine', 'talk' and 'go to'. Ask me about
+            the studio, or go through the door to see for yourself."
     topics:
-      - id: ledger
+      - id: studio
         text:
           en:
-            label: the ledger
-            dialogue: '"{npcKey}" shakes her head. "Not yet. Come back when I know you."'
-        responses:
-          - when:
-              npcStat: opinionOfPlayer
-              op: '>='
-              value: 2
-            effects:
-              - learnFact: courier
-            text:
-              en: >-
-                "{npcKey}" lowers her voice. "Fine. A courier in a grey coat
-                came through the alley Tuesday night and left a ledger by the
-                streetlamp. He caught the last bus. Now you know what I know."
-      - id: herself
-        text:
-          en:
-            label: Rosa
+            label: the studio
             dialogue: >-
-              "{npcKey}" shrugs. "Twenty years behind this counter. I see
-              everything that comes through that door, and forget most of it —
-              on purpose."
+              {npcKey} unrolls the scroll. "Underwater Games is a small studio.
+              Nothing here is under water, which we consider a clever name. The
+              main room beyond that door is where the work happens."
+      - id: site
+        text:
+          en:
+            label: how this works
+            dialogue: >-
+              {npcKey} clears his throat. "Doors and clickable things lead you
+              from room to room. Type 'examine' and the name of something to
+              look closer, 'talk' to speak to someone, 'back' to stop looking.
+              Click the locations list to walk to a place you have already
+              visited."
     text:
       en:
-        name: Rosa
+        name: Landing Page
         description: >-
-          A broad-shouldered cook wiping her hands on a dish towel, watching the
-          door.
+          A young man in a feathered cap and a red-and-gold doublet, as if he had
+          been cut out of a tarot card. He holds a scroll and looks eager to help.
         dialogue: >-
-          "{npcKey}" keeps her eyes on the grill. "Don't know you. Don't know
-          anything."
-transitLines:
-  - id: bus-1
-    fareMinor: 300
-    text:
-      en:
-        name: Bus Line 1
-passes:
-  - id: bus1-weekly
-    aliases:
-      - weekly pass
-      - bus pass
-      - weekly bus pass
-      - bus line 1 weekly pass
-    priceMinor: 1500
-    durationDays: 7
-    lineIds:
-      - bus-1
-    text:
-      en:
-        name: Bus Line 1 Weekly Pass
+          {npcKey} bows. "Hail again! Ask me anything, or step through the door to
+          the main room."
+transitLines: []
+passes: []
 notebookProducts:
   - id: pocket-notebook
     aliases:

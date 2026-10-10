@@ -1500,3 +1500,11 @@ describe("scene image", () => {
     expect(engine.getSceneImage()?.src).toBe("drawer-closed.svg");
   });
 });
+
+describe("GameEngine external clock", () => {
+  it("syncClock sets minutesElapsed outright", () => {
+    const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+    engine.syncClock(1000);
+    expect(engine.getState().clock.minutesElapsed).toBe(1000);
+  });
+});

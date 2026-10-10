@@ -1,4 +1,5 @@
 import { registerContentLocale } from "../i18n/resolver";
+import type { CalendarEpoch } from "../engine/time/calendar";
 import type { GameState, InteriorLocation, Location } from "../engine/types";
 import worldYamlText from "./city/world.yaml?raw";
 import type { CityContent } from "./cityLoader";
@@ -38,7 +39,7 @@ for (const [language, table] of Object.entries(city.derivedLocale)) {
   registerContentLocale(language, table);
 }
 
-const STARTING_LOCATION_ID = "office";
+const STARTING_LOCATION_ID = "studio-landing";
 if (!city.locations[STARTING_LOCATION_ID]) {
   throw new Error(`content/city/locations/ has no location "${STARTING_LOCATION_ID}" — createInitialState needs it as the starting location.`);
 }
@@ -58,7 +59,12 @@ export function loadCityContent(): CityContent {
   return structuredClone(city);
 }
 
-export function createInitialState(): GameState {
+/**
+ * `options.epoch` overrides the clock's calendar date (default: the sample's
+ * 1946 date). The website passes today's local date and then feeds the clock
+ * from real time — see `view/wallClock.ts`.
+ */
+export function createInitialState(options: { epoch?: CalendarEpoch } = {}): GameState {
   const content = loadCityContent();
   return {
     locations: content.locations,
@@ -104,7 +110,7 @@ export function createInitialState(): GameState {
     // Day 1, 08:00 = 18 September 1946, 08:00. The epoch is the ONLY
     // date/time format the game shows — see docs/systems/time.md for why
     // an earlier relative "Day N" display was dropped entirely.
-    clock: { minutesElapsed: 8 * 60, epoch: { year: 1946, month: 9, day: 18 } },
+    clock: { minutesElapsed: 8 * 60, epoch: options.epoch ?? { year: 1946, month: 9, day: 18 } },
   };
 }
 

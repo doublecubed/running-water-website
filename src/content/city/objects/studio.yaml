@@ -1,0 +1,91 @@
+# Setpieces of the studio's rooms. Examining one swaps the image pane to its
+# own picture (docs/systems/image-pane.md); the "Step back" hotspot runs
+# `back`, which ends the examine and restores the room's picture.
+
+- id: reception-desk
+  kind: setpiece
+  portable: false
+  aliases: [reception desk, desk, monitor, reception]
+  text:
+    en:
+      name: the reception desk
+      description: >-
+        A wooden reception desk with a phone, a monitor, a chair and a small
+        stack of paper. Nobody has sat here in a long time.
+
+- id: workspace
+  kind: setpiece
+  portable: false
+  aliases: [workspace, drafting desk, papers, desk of papers, blueprints]
+  text:
+    en:
+      name: the workspace
+      description: >-
+        A drafting desk buried in floor plans, flowcharts and sticky notes. Some
+        of it is probably about the next game.
+  image:
+    src: studio-workspace.jpg
+    text:
+      en:
+        alt: A cluttered drafting desk covered in blueprints, flowcharts and sticky notes.
+    hotspots:
+      - text:
+          en:
+            label: Step back
+        command: back
+        rect: [0, 90, 100, 10]
+
+- id: computer-desk
+  kind: setpiece
+  portable: false
+  aliases: [computer desk, computer, pc, monitor screen, screen]
+  text:
+    en:
+      name: the computer desk
+      description: >-
+        A curved monitor full of code, a keyboard, a plant, and a poster of a
+        cat that says "MANQ IN THERE". This is where the current project lives.
+  image:
+    src: studio-computer.jpg
+    text:
+      en:
+        alt: A monitor showing code, with a cat poster on the wall beside it.
+    hotspots:
+      - text:
+          en:
+            label: Step back
+        command: back
+        rect: [0, 90, 100, 10]
+
+- id: whiteboard
+  kind: setpiece
+  portable: false
+  aliases: [whiteboard, white board, board]
+  text:
+    en:
+      name: the whiteboard
+      description: >-
+        A whiteboard covered in floor plans, equations and arrows. The other
+        projects are in here somewhere, in the handwriting of someone in a hurry.
+  image:
+    src: studio-whiteboard.jpg
+    text:
+      en:
+        alt: A whiteboard full of plans and equations in front of a city window.
+    hotspots:
+      - text:
+          en:
+            label: Step back
+        command: back
+        rect: [0, 90, 100, 10]
+
+- id: cabinet
+  kind: setpiece
+  portable: false
+  aliases: [cabinet, file cabinet, filing cabinet, wardrobe]
+  text:
+    en:
+      name: the file cabinet
+      description: >-
+        A tall wooden cabinet with several drawers. It is locked, and it
+        seems to be looking at you.

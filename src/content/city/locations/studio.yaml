@@ -1,0 +1,302 @@
+# The studio website's rooms. Every room is `exterior` on purpose: the
+# interior/exterior distinction only drives the flat-rate hop rules from the
+# old city sample, which the website doesn't want. Exits are plain
+# connections (one per direction); a one-way connection is a one-way door.
+# See docs/website/site-map.md.
+
+- id: studio-landing
+  kind: exterior
+  aliases: [landing, the landing, entrance, lobby, reception]
+  connections:
+    - toId: studio-mainroom
+      distanceKm: 0.01
+      modes: [foot]
+  itemIds: [reception-desk]
+  npcIds: [herald]
+  x: 450
+  'y': 440
+  text:
+    en:
+      name: The Landing
+      description: >-
+        The entrance of Underwater Games: a beige wall, a reception desk with a
+        monitor nobody is using, and a door leading deeper into the studio. A
+        young man in very old-fashioned clothes stands by the desk, holding a
+        scroll.
+  image:
+    src: studio-entrance.jpg
+    text:
+      en:
+        alt: A beige reception area with a wooden door, a desk, and a page in medieval dress holding a scroll.
+    hotspots:
+      - text:
+          en:
+            label: Go through the door to the Main Room
+        command: go to main room
+        rect: [5.3, 20.3, 20.2, 69.9]
+      - text:
+          en:
+            label: Talk to the Landing Page
+        command: talk herald
+        rect: [74, 29, 18, 69]
+      - text:
+          en:
+            label: Look at the reception desk
+        command: examine reception desk
+        rect: [30, 55, 42, 35]
+
+- id: studio-mainroom
+  kind: exterior
+  aliases: [main room, studio, main]
+  connections:
+    - toId: studio-landing
+      distanceKm: 0.01
+      modes: [foot]
+    - toId: studio-pressroom
+      distanceKm: 0.01
+      modes: [foot]
+    - toId: studio-drawingroom
+      distanceKm: 0.01
+      modes: [foot]
+    - toId: studio-mailroom
+      distanceKm: 0.01
+      modes: [foot]
+    - toId: studio-breakroom
+      distanceKm: 0.01
+      modes: [foot]
+  itemIds: [workspace, computer-desk, whiteboard, cabinet]
+  x: 450
+  'y': 280
+  text:
+    en:
+      name: Main Room
+      description: >-
+        This is the main room of Underwater Games. It's funny, because nothing
+        is under water here. You see two desks ahead, one with a computer and
+        one with a clutter of papers on it. To the left is a whiteboard, and to
+        the right is a file cabinet who looks back at you menacingly. Doors lead
+        back to the landing, and on to the press room, the drawing room, the mail
+        room and the break room.
+  image:
+    src: studio-general.jpg
+    text:
+      en:
+        alt: An indie game studio like no other.
+    hotspots:
+      - text:
+          en:
+            label: Workspace
+        command: examine workspace
+        rect: [62.08, 60.85, 21.81, 15.93]
+      - text:
+          en:
+            label: Computer desk
+        command: examine computer desk
+        rect: [41, 44.18, 20.72, 22.62]
+      - text:
+          en:
+            label: Whiteboard
+        command: examine whiteboard
+        rect: [5.39, 25.78, 21.57, 33.56]
+      - text:
+          en:
+            label: File cabinet
+        command: examine cabinet
+        rect: [86.12, 20.39, 13.62, 76.26]
+
+- id: studio-pressroom
+  kind: exterior
+  aliases: [press room, press]
+  connections:
+    - toId: studio-mainroom
+      distanceKm: 0.01
+      modes: [foot]
+  x: 650
+  'y': 280
+  text:
+    en:
+      name: Press Room
+      description: >-
+        A very large printing press has been installed in a very small room.
+        There is no press kit here. There probably never will be.
+  image:
+    src: studio-pressroom.jpg
+    text:
+      en:
+        alt: A huge printing press crammed into a small room.
+    hotspots:
+      - text:
+          en:
+            label: Back to the Main Room
+        command: go to main room
+        rect: [0, 88, 100, 12]
+
+- id: studio-drawingroom
+  kind: exterior
+  aliases: [drawing room, drawing]
+  connections:
+    - toId: studio-mainroom
+      distanceKm: 0.01
+      modes: [foot]
+  x: 250
+  'y': 280
+  text:
+    en:
+      name: Drawing Room
+      description: >-
+        Everything in here is drawn in crayon, including the people. This is
+        where the studio introduces itself.
+  image:
+    src: studio-drawingroom.svg
+    text:
+      en:
+        alt: Placeholder art for the drawing room.
+    hotspots:
+      - text:
+          en:
+            label: Back to the Main Room
+        command: go to main room
+        rect: [0, 88, 100, 12]
+
+- id: studio-mailroom
+  kind: exterior
+  aliases: [mail room, mail, post room]
+  connections:
+    - toId: studio-mainroom
+      distanceKm: 0.01
+      modes: [foot]
+  x: 450
+  'y': 120
+  text:
+    en:
+      name: Mail Room
+      description: >-
+        Rows of empty pigeonholes surround a vast mail-sorting machine. Something
+        with too many arms is operating it from the inside. There is no mail,
+        because this is an indie studio.
+  image:
+    src: studio-mailroom.jpg
+    text:
+      en:
+        alt: A mail room full of pigeonholes, with a sorting machine operated by a creature with several arms.
+    hotspots:
+      - text:
+          en:
+            label: Back to the Main Room
+        command: go to main room
+        rect: [0, 88, 100, 12]
+
+- id: studio-breakroom
+  kind: exterior
+  aliases: [break room, break]
+  connections:
+    - toId: studio-mainroom
+      distanceKm: 0.01
+      modes: [foot]
+    - toId: studio-archive
+      distanceKm: 0.01
+      modes: [foot]
+  x: 650
+  'y': 440
+  text:
+    en:
+      name: Break Room
+      description: >-
+        A break room that is, frankly, broken. The staircase appears to come out
+        of the ceiling twice, and one corner of the floor is a wall. A doorway
+        leads down to the archive.
+  image:
+    src: studio-breakroom.jpg
+    text:
+      en:
+        alt: A messy break room where the geometry has stopped agreeing with itself.
+    hotspots:
+      - text:
+          en:
+            label: Down the stairs to the Archive
+        command: go to archive
+        rect: [47, 38, 8, 33]
+      - text:
+          en:
+            label: Back to the Main Room
+        command: go to main room
+        rect: [27.5, 28, 7.5, 40]
+
+- id: studio-archive
+  kind: exterior
+  aliases: [archive, the archive, basement]
+  connections:
+    - toId: studio-breakroom
+      distanceKm: 0.01
+      modes: [foot]
+  x: 650
+  'y': 600
+  text:
+    en:
+      name: Archive
+      description: >-
+        A flooded basement full of drifting paperwork. Tentacles surface now and
+        then and sink again. A wooden stair leads back up.
+  image:
+    src: studio-archive.jpg
+    text:
+      en:
+        alt: A flooded basement archive with floating papers, a wardrobe, and tentacles in the water.
+    hotspots:
+      - text:
+          en:
+            label: Up the stairs to the Break Room
+        command: go to break room
+        rect: [72, 5, 25, 60]
+
+- id: studio-waitingroom
+  kind: exterior
+  aliases: [waiting room, waiting]
+  connections:
+    - toId: studio-mainroom
+      distanceKm: 0.01
+      modes: [foot]
+  x: 250
+  'y': 440
+  text:
+    en:
+      name: Waiting Room
+      description: >-
+        A chair, and a ticket machine. That is all.
+  image:
+    src: studio-waitingroom.svg
+    text:
+      en:
+        alt: Placeholder art for the waiting room.
+    hotspots:
+      - text:
+          en:
+            label: Back to the Main Room
+        command: go to main room
+        rect: [0, 88, 100, 12]
+
+- id: studio-bathroom
+  kind: exterior
+  aliases: [bathroom, restroom, toilet]
+  connections:
+    - toId: studio-mainroom
+      distanceKm: 0.01
+      modes: [foot]
+  x: 50
+  'y': 280
+  text:
+    en:
+      name: Bathroom
+      description: >-
+        You are not supposed to be in here. Nobody told you how you got here.
+  image:
+    src: studio-bathroom.svg
+    text:
+      en:
+        alt: Placeholder art for the bathroom.
+    hotspots:
+      - text:
+          en:
+            label: Back to the Main Room
+        command: go to main room
+        rect: [0, 88, 100, 12]

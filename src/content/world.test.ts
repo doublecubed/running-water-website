@@ -63,16 +63,10 @@ describe("world content", () => {
     }
   });
 
-  it("resolves migrated inline text to the exact strings the old separate content-locale file used to carry", () => {
+  it("resolves the studio's inline text and starts the player there", () => {
     const state = createInitialState();
-    expect(rawLookup(state.locations.precinct!.nameKey)).toBe("Police Precinct");
-    expect(rawLookup(state.locations.precinct!.descriptionKey)).toBe(
-      "A squat brick precinct house, radios crackling somewhere inside. Main Street is back north.",
-    );
-    const desk = state.worldObjects.desk!;
-    const rightDrawer = desk.parts!.find((p) => p.id === "right-drawer")!;
-    const openState = rightDrawer.states.find((s) => s.id === "open")!;
-    expect(rawLookup(openState.summaryKey!)).toBe("One of its drawers is open.");
+    expect(state.player.locationId).toBe("studio-landing");
+    expect(rawLookup(state.locations["studio-landing"]!.nameKey)).toBe("The Landing");
   });
 
   it("has every pass with at least one alias, and every alias lowercase", () => {

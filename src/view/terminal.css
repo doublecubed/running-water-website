@@ -901,3 +901,18 @@ body {
   background: var(--accent);
   border-color: var(--accent);
 }
+
+/* A side-panel entry that runs a command when clicked (the locations list). Styled as plain text so the panel keeps its look; hover/focus show it is clickable. */
+.side-panel__link {
+  all: unset;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: underline dotted;
+}
+
+.side-panel__link:hover,
+.side-panel__link:focus-visible {
+  color: var(--fg);
+  text-decoration: underline;
+  outline: 1px solid var(--dim);
+}

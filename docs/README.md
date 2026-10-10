@@ -103,6 +103,7 @@ decisions and the documentation policy that governs this folder.
 - `systems/image-pane.md` — per-location scene image with percent-positioned
   clickable hotspots that run commands through the normal input path
   (authored content only: no save change, no engine events)
+- `website/site-map.md` — the studio website's rooms, first slice, navigation UX and real-time clock
 - `website/puzzle_system.md` — design sketch (not built) for reusing the
   engine as a studio website with a small breadcrumb puzzle
 - `future_work.md` — ideas worth remembering but not being built now (not a

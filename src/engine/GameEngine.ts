@@ -88,7 +88,17 @@ export class GameEngine {
    * deterministic skill-check assertions instead of mocking
    * `Math.random` globally; production code never needs to pass one.
    */
-  constructor(private state: GameState, private rng: () => number = Math.random) {}
+  /**
+   * `options.externalClock` hands ownership of the clock to the caller: in-game
+   * actions (travel, ...) stop advancing `minutesElapsed` and the view feeds it
+   * via `syncClock` instead (the website shows real wall-clock time). Default
+   * `false` keeps the simulated clock every existing test relies on.
+   */
+  constructor(
+    private state: GameState,
+    private rng: () => number = Math.random,
+    private options: { externalClock?: boolean } = {},
+  ) {}
 
   /** Read-only snapshot access for views that need to render current state (e.g. inventory panel). */
   getState(): Readonly<GameState> {
@@ -1212,7 +1222,19 @@ export class GameEngine {
    * no per-tick loop: sync happens exactly when time actually moves.
    */
   private advanceClock(minutes: number): void {
-    this.state.clock.minutesElapsed += minutes;
+    if (!this.options.externalClock) this.state.clock.minutesElapsed += minutes;
+    syncNpcLocations(this.state);
+  }
+
+  /**
+   * Sets `clock.minutesElapsed` outright, for a caller that owns real time
+   * (see the `externalClock` constructor option). Takes plain minutes since
+   * the clock's epoch so the engine never touches `Date` itself — converting
+   * wall-clock time into that number is the view layer's job. Re-syncs
+   * scheduled NPCs, exactly like an in-game advance.
+   */
+  syncClock(minutesElapsed: number): void {
+    this.state.clock.minutesElapsed = minutesElapsed;
     syncNpcLocations(this.state);
   }
 
