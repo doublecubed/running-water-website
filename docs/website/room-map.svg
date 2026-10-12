@@ -82,8 +82,8 @@
     <text x="880" y="201" font-size="20" font-weight="bold">Press Room</text>
     <text x="880" y="223" font-size="14">press kit (giant press)</text>
 
-    <text x="880" y="306" font-size="20" font-weight="bold">Meeting Room ?</text>
-    <text x="880" y="328" font-size="14">about us (tentative)</text>
+    <text x="880" y="306" font-size="20" font-weight="bold">Meeting Room</text>
+    <text x="880" y="328" font-size="14">about us</text>
 
     <text x="880" y="411" font-size="20" font-weight="bold" fill="#8a4b3a">Waiting Room</text>
     <text x="880" y="433" font-size="14" fill="#8a4b3a">ticket machine, no way in yet</text>
@@ -119,6 +119,6 @@
     <rect x="0" y="96" width="50" height="20" rx="4" fill="#eadfd8" stroke="#8a4b3a" stroke-width="3" stroke-dasharray="9 7"/>
     <text x="64" y="111">secret room (reached by the puzzle)</text>
     <rect x="0" y="130" width="50" height="20" rx="4" fill="#e8d9b5" stroke="#2b2b2b" stroke-width="3" stroke-dasharray="3 7"/>
-    <text x="64" y="145">tentative room (not decided)</text>
+
   </g>
 </svg>

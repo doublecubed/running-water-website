@@ -13,14 +13,17 @@ old city sample). Content: `src/content/city/locations/studio.yaml`; objects:
 | Room (id) | Real page | Art | Exits |
 |---|---|---|---|
 | The Landing (`studio-landing`, **start**) | Entry, how the site works | `studio-entrance.jpg` | Main Room |
-| Main Room (`studio-mainroom`) | Hub: computer = current project, whiteboard = other projects, workspace = blog posts, cabinet = idea vault (locked) | `studio-general.jpg` | Landing, Press, Drawing, Mail, Break |
-| Press Room | Press kit (empty on purpose, giant press) | placeholder svg | Main |
-| Drawing Room | About us (crayon, stick figures) | placeholder svg | Main |
-| Mail Room | Contact + mailing list | `studio-mailroom.jpg` | Main |
-| Break Room | Broken geometry, tentacles | `studio-breakroom.jpg` | Main, Archive |
-| Archive | Flooded; idea vault key/clue | `studio-archive.jpg` | Break Room |
-| Waiting Room | Puzzle: ticket machine | placeholder svg | Main (**no way in yet**) |
-| Bathroom | Easter egg | placeholder svg | Main (**no way in yet**) |
+| Main Room (`studio-mainroom`) | Hub: computer = current project, whiteboard = other projects, workspace = blog posts | `studio-general.jpg` | Landing (bottom strip), Corridor (right bar) |
+| Corridor (`studio-corridor`) | Navigation hub | `studio-corridor.jpg` | Main (left doorway), Meeting (left door), Press and Mail (right doors), Break (far-end door; broken-geometry graphic to be added) |
+| Press Room | Press kit (empty on purpose, giant press) | `studio-pressroom.jpg` | Corridor |
+| Meeting Room | About us (team as crayon drawings) | `studio-meetingroom.jpg` | Corridor |
+| Mail Room | Contact + mailing list | `studio-mailroom.jpg` | Corridor |
+| Break Room | Broken geometry, tentacles | `studio-breakroom.jpg` | Corridor, Archive |
+| Archive | Flooded; the idea-vault cabinet lives here | `studio-archive.jpg` | Break Room |
+| Waiting Room | Puzzle: ticket machine | placeholder svg | Corridor (**no way in yet**) |
+| Bathroom | Easter egg | placeholder svg | Corridor (**no way in yet**) |
+
+Every room image ends with a full-width bottom-strip hotspot (`rect: [0, 90, 100, 10]`) that backs out to the previous room; the Main Room also has a full-height right bar into the corridor. The drawing room was dropped in favour of the Meeting Room. `room-map.svg` is the design diagram.
 
 The Waiting Room and Bathroom have no inbound connection on purpose: the engine
 has no locked-door/gated-connection concept (a connection either exists or not;

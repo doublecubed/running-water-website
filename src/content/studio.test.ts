@@ -24,3 +24,24 @@ describe("studio first slice", () => {
     expect(engine.getState().player.locationId).toBe("studio-archive");
   });
 });
+
+describe("studio room structure", () => {
+  it("routes the main room's exits through the corridor", () => {
+    const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+    engine.travelTo("main room");
+    // Press room is not directly connected to the main room: the path goes via the corridor.
+    expect(engine.travelTo("press room").ok).toBe(true);
+    expect(engine.getState().player.locationId).toBe("studio-pressroom");
+    expect(engine.travelTo("corridor").ok).toBe(true);
+    expect(engine.getState().player.locationId).toBe("studio-corridor");
+    expect(engine.travelTo("meeting room").ok).toBe(true);
+  });
+
+  it("has no way into the waiting room or bathroom yet", () => {
+    const state = createInitialState();
+    const inbound = (id: string) =>
+      Object.values(state.locations).some((l) => l.connections.some((c) => c.toId === id));
+    expect(inbound("studio-waitingroom")).toBe(false);
+    expect(inbound("studio-bathroom")).toBe(false);
+  });
+});

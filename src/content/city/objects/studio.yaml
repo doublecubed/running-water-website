@@ -82,10 +82,11 @@
 - id: cabinet
   kind: setpiece
   portable: false
-  aliases: [cabinet, file cabinet, filing cabinet, wardrobe]
+  aliases: [cabinet, file cabinet, filing cabinet, wardrobe, idea vault, vault]
   text:
     en:
-      name: the file cabinet
+      name: the cabinet
       description: >-
-        A tall wooden cabinet with several drawers. It is locked, and it
-        seems to be looking at you.
+        A tall wooden cabinet standing in the flood, its doors swollen shut. A
+        label on the front reads IDEAS. It is locked, and it seems to be looking
+        at you.

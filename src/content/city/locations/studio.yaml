@@ -2,7 +2,12 @@
 # interior/exterior distinction only drives the flat-rate hop rules from the
 # old city sample, which the website doesn't want. Exits are plain
 # connections (one per direction); a one-way connection is a one-way door.
-# See docs/website/site-map.md.
+#
+# Layout: Landing -> Main Room -> Corridor -> (Press, Mail, Meeting, Break).
+# The Break Room leads down to the Archive. Waiting Room and Bathroom have no
+# inbound connection yet (reserved for the puzzle). Every room's image ends
+# with a full-width bottom strip hotspot that backs out to the previous room.
+# See docs/website/site-map.md and room-map.svg.
 
 - id: studio-landing
   kind: exterior
@@ -13,8 +18,8 @@
       modes: [foot]
   itemIds: [reception-desk]
   npcIds: [herald]
-  x: 450
-  'y': 440
+  x: 420
+  'y': 465
   text:
     en:
       name: The Landing
@@ -38,7 +43,7 @@
           en:
             label: Talk to the Landing Page
         command: talk herald
-        rect: [74, 29, 18, 69]
+        rect: [74, 29, 18, 61]
       - text:
           en:
             label: Look at the reception desk
@@ -52,31 +57,21 @@
     - toId: studio-landing
       distanceKm: 0.01
       modes: [foot]
-    - toId: studio-pressroom
+    - toId: studio-corridor
       distanceKm: 0.01
       modes: [foot]
-    - toId: studio-drawingroom
-      distanceKm: 0.01
-      modes: [foot]
-    - toId: studio-mailroom
-      distanceKm: 0.01
-      modes: [foot]
-    - toId: studio-breakroom
-      distanceKm: 0.01
-      modes: [foot]
-  itemIds: [workspace, computer-desk, whiteboard, cabinet]
-  x: 450
-  'y': 280
+  itemIds: [workspace, computer-desk, whiteboard]
+  x: 420
+  'y': 305
   text:
     en:
       name: Main Room
       description: >-
         This is the main room of Underwater Games. It's funny, because nothing
         is under water here. You see two desks ahead, one with a computer and
-        one with a clutter of papers on it. To the left is a whiteboard, and to
-        the right is a file cabinet who looks back at you menacingly. Doors lead
-        back to the landing, and on to the press room, the drawing room, the mail
-        room and the break room.
+        one with a clutter of papers on it. To the left is a whiteboard in front
+        of a window. A door on the right leads out to the corridor, and the way
+        back to the landing is behind you.
   image:
     src: studio-general.jpg
     text:
@@ -100,19 +95,91 @@
         rect: [5.39, 25.78, 21.57, 33.56]
       - text:
           en:
-            label: File cabinet
-        command: examine cabinet
-        rect: [86.12, 20.39, 13.62, 76.26]
+            label: Out to the corridor
+        command: go to corridor
+        rect: [86, 0, 14, 90]
+      - text:
+          en:
+            label: Back to the Landing
+        command: go to landing
+        rect: [0, 90, 100, 10]
+
+- id: studio-corridor
+  kind: exterior
+  aliases: [corridor, hallway, hall]
+  connections:
+    - toId: studio-mainroom
+      distanceKm: 0.01
+      modes: [foot]
+    - toId: studio-pressroom
+      distanceKm: 0.01
+      modes: [foot]
+    - toId: studio-mailroom
+      distanceKm: 0.01
+      modes: [foot]
+    - toId: studio-meetingroom
+      distanceKm: 0.01
+      modes: [foot]
+    - toId: studio-breakroom
+      distanceKm: 0.01
+      modes: [foot]
+  x: 630
+  'y': 310
+  text:
+    en:
+      name: Corridor
+      description: >-
+        A long beige corridor with a green tiled floor and doors on both sides.
+        On the left, an open doorway leads back to the main room, and a door
+        further along leads to the meeting room. The press room and the mail room
+        are on the right. At the far end is a door that does not quite belong
+        to the building. It leads to the break room.
+  image:
+    src: studio-corridor.jpg
+    text:
+      en:
+        alt: A long corridor with a green tiled floor, doors along both walls, and an open doorway on the left showing the main room.
+    hotspots:
+      - text:
+          en:
+            label: Back to the Main Room
+        command: go to main room
+        rect: [5.5, 0, 28, 90]
+      - text:
+          en:
+            label: Meeting Room
+        command: go to meeting room
+        rect: [43.6, 28, 5.1, 45.6]
+      - text:
+          en:
+            label: Press Room
+        command: go to press room
+        rect: [71, 30, 3, 38]
+      - text:
+          en:
+            label: Break Room
+        command: go to break room
+        rect: [59, 41, 3.6, 12.5]
+      - text:
+          en:
+            label: Mail Room
+        command: go to mail room
+        rect: [81, 9, 9.5, 81]
+      - text:
+          en:
+            label: Back to the Main Room
+        command: go to main room
+        rect: [0, 90, 100, 10]
 
 - id: studio-pressroom
   kind: exterior
   aliases: [press room, press]
   connections:
-    - toId: studio-mainroom
+    - toId: studio-corridor
       distanceKm: 0.01
       modes: [foot]
-  x: 650
-  'y': 280
+  x: 880
+  'y': 205
   text:
     en:
       name: Press Room
@@ -127,46 +194,47 @@
     hotspots:
       - text:
           en:
-            label: Back to the Main Room
-        command: go to main room
-        rect: [0, 88, 100, 12]
+            label: Back to the Corridor
+        command: go to corridor
+        rect: [0, 90, 100, 10]
 
-- id: studio-drawingroom
+- id: studio-meetingroom
   kind: exterior
-  aliases: [drawing room, drawing]
+  aliases: [meeting room, meeting, conference room]
   connections:
-    - toId: studio-mainroom
+    - toId: studio-corridor
       distanceKm: 0.01
       modes: [foot]
-  x: 250
-  'y': 280
+  x: 880
+  'y': 310
   text:
     en:
-      name: Drawing Room
+      name: Meeting Room
       description: >-
-        Everything in here is drawn in crayon, including the people. This is
-        where the studio introduces itself.
+        A long table, mismatched chairs and a whiteboard that says Q3 Goals.
+        This is where the studio meets, and where you can meet the studio. One
+        of the chairs has a crayon drawing of its owner taped to the back.
   image:
-    src: studio-drawingroom.svg
+    src: studio-meetingroom.jpg
     text:
       en:
-        alt: Placeholder art for the drawing room.
+        alt: A meeting room with a long table, office chairs, a window onto the city, and a whiteboard reading Q3 Goals.
     hotspots:
       - text:
           en:
-            label: Back to the Main Room
-        command: go to main room
-        rect: [0, 88, 100, 12]
+            label: Back to the Corridor
+        command: go to corridor
+        rect: [0, 90, 100, 10]
 
 - id: studio-mailroom
   kind: exterior
   aliases: [mail room, mail, post room]
   connections:
-    - toId: studio-mainroom
+    - toId: studio-corridor
       distanceKm: 0.01
       modes: [foot]
-  x: 450
-  'y': 120
+  x: 880
+  'y': 100
   text:
     en:
       name: Mail Room
@@ -182,28 +250,29 @@
     hotspots:
       - text:
           en:
-            label: Back to the Main Room
-        command: go to main room
-        rect: [0, 88, 100, 12]
+            label: Back to the Corridor
+        command: go to corridor
+        rect: [0, 90, 100, 10]
 
 - id: studio-breakroom
   kind: exterior
   aliases: [break room, break]
   connections:
-    - toId: studio-mainroom
+    - toId: studio-corridor
       distanceKm: 0.01
       modes: [foot]
     - toId: studio-archive
       distanceKm: 0.01
       modes: [foot]
-  x: 650
-  'y': 440
+  x: 420
+  'y': 645
   text:
     en:
       name: Break Room
       description: >-
         A break room that is, frankly, broken. The staircase appears to come out
-        of the ceiling twice, and one corner of the floor is a wall. A doorway
+        of the ceiling twice, and one corner of the floor is a wall. You got
+        here through a part of the corridor that should not exist. A doorway
         leads down to the archive.
   image:
     src: studio-breakroom.jpg
@@ -218,9 +287,9 @@
         rect: [47, 38, 8, 33]
       - text:
           en:
-            label: Back to the Main Room
-        command: go to main room
-        rect: [27.5, 28, 7.5, 40]
+            label: Back to the Corridor
+        command: go to corridor
+        rect: [0, 90, 100, 10]
 
 - id: studio-archive
   kind: exterior
@@ -229,14 +298,16 @@
     - toId: studio-breakroom
       distanceKm: 0.01
       modes: [foot]
-  x: 650
-  'y': 600
+  itemIds: [cabinet]
+  x: 420
+  'y': 805
   text:
     en:
       name: Archive
       description: >-
         A flooded basement full of drifting paperwork. Tentacles surface now and
-        then and sink again. A wooden stair leads back up.
+        then and sink again. A tall cabinet stands in the water, and a wooden
+        stair leads back up.
   image:
     src: studio-archive.jpg
     text:
@@ -245,19 +316,29 @@
     hotspots:
       - text:
           en:
+            label: Look at the cabinet
+        command: examine cabinet
+        rect: [56, 21, 16, 40]
+      - text:
+          en:
             label: Up the stairs to the Break Room
         command: go to break room
-        rect: [72, 5, 25, 60]
+        rect: [73, 5, 24, 60]
+      - text:
+          en:
+            label: Back up to the Break Room
+        command: go to break room
+        rect: [0, 90, 100, 10]
 
 - id: studio-waitingroom
   kind: exterior
   aliases: [waiting room, waiting]
   connections:
-    - toId: studio-mainroom
+    - toId: studio-corridor
       distanceKm: 0.01
       modes: [foot]
-  x: 250
-  'y': 440
+  x: 880
+  'y': 415
   text:
     en:
       name: Waiting Room
@@ -271,19 +352,19 @@
     hotspots:
       - text:
           en:
-            label: Back to the Main Room
-        command: go to main room
-        rect: [0, 88, 100, 12]
+            label: Back to the Corridor
+        command: go to corridor
+        rect: [0, 90, 100, 10]
 
 - id: studio-bathroom
   kind: exterior
   aliases: [bathroom, restroom, toilet]
   connections:
-    - toId: studio-mainroom
+    - toId: studio-corridor
       distanceKm: 0.01
       modes: [foot]
-  x: 50
-  'y': 280
+  x: 880
+  'y': 520
   text:
     en:
       name: Bathroom
@@ -297,6 +378,6 @@
     hotspots:
       - text:
           en:
-            label: Back to the Main Room
-        command: go to main room
-        rect: [0, 88, 100, 12]
+            label: Back to the Corridor
+        command: go to corridor
+        rect: [0, 90, 100, 10]
