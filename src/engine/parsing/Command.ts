@@ -1,4 +1,3 @@
-import type { TravelCategory } from "../types";
 
 /** Which fixed screen slot a side panel occupies — sides are fixed for now (see docs/systems/... side-panels note); only a slot's CONTENT is player-selectable. */
 export type PanelSlot = "left" | "right";
@@ -34,20 +33,10 @@ export type Command =
    * exits/locations are data, not parser-known structure.
    */
   | { kind: "travel"; query: string }
-  /**
-   * Bare "travel" with no destination — opens the direct-connections menu
-   * (see docs/systems/economy.md) rather than failing as unknown. This is
-   * the sole entry point into the travel menu-flow; `GameEngine` itself
-   * knows nothing about menus — the view builds one from
-   * `listDirectConnections`/`inquireTravel`'s output. "inquire" was
-   * retired as a standalone verb specifically to free it for future
-   * investigation use (interrogation, etc.) — see docs/systems/parsing.md.
-   */
-  | { kind: "travelMenu" }
   | { kind: "take"; query: string }
   /**
-   * `query` is alias-matched against BOTH `GameState.passes` and
-   * `GameState.notebookProducts` — the generalized `buy` verb, see
+   * `query` is alias-matched against `GameState.notebookProducts` —
+   * the generalized `buy` verb, see
    * docs/systems/notebooks.md's "Economy integration" decision and
    * `view/menu/buyMenu.ts`'s `buyByQuery`. Bare "buy" (no query) is
    * `buyMenu` instead, below.
@@ -55,9 +44,8 @@ export type Command =
   | { kind: "buy"; query: string }
   /**
    * Bare "buy" with nothing named — opens a menu (`view/menu/buyMenu.ts`)
-   * listing every purchasable good (notebooks, passes). Same shape as
-   * `travelMenu`: `GameEngine` knows nothing about menus, the view builds
-   * one from static content.
+   * listing every purchasable good (notebooks). `GameEngine` knows nothing
+   * about menus; the view builds one from static content.
    */
   | { kind: "buyMenu" }
   | { kind: "inventory" }
@@ -103,8 +91,6 @@ export type Command =
    */
   | { kind: "toggleWorldMap" }
   | { kind: "time" }
-  /** No `preference` means "tell me the current setting"; with one, it's a change. See GameEngine.setTravelPreference/getTravelPreference. */
-  | { kind: "travelPreference"; preference?: TravelCategory }
   /** The `sneak` verb — toggles Player.stealthMode. See GameEngine.toggleStealth and docs/systems/checks.md. */
   | { kind: "toggleStealth" }
   /**
@@ -161,8 +147,4 @@ export type Command =
    * docs/systems/case-board.md.
    */
   | { kind: "board" }
-  /** Saves the current game to the one save slot — see docs/systems/save.md. Always succeeds (a full state, per current schema, always serializes cleanly). */
-  | { kind: "save" }
-  /** Loads the game from the one save slot, replacing the engine's current state entirely (GameEngine.loadState) — see docs/systems/save.md. Fails if no save exists, or it's from an incompatible schema version. */
-  | { kind: "load" }
   | { kind: "unknown"; raw: string };

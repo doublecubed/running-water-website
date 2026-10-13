@@ -1,11 +1,10 @@
 import { dump, load } from "js-yaml";
-import type { GameState, Location, Npc, Part, PartState, SceneImage, ScheduleSlot, StatBlock, StatKey, TransportMode, VisibilityTier, WorldObject } from "../engine/types";
+import type { Location, Npc, Part, PartState, SceneImage, ScheduleSlot, StatBlock, StatKey, VisibilityTier, WorldObject } from "../engine/types";
 import { isRecord, parseCity } from "../content/cityLoader";
 import type { CityContent } from "../content/cityLoader";
 import { STAT_DEFINITIONS } from "../engine/stats/stats";
 import { parsePrefabs } from "../content/prefabLoader";
 import type { LocationPrefab, PrefabContent } from "../content/prefabLoader";
-import { isInteriorHop } from "../engine/navigation/interiorHops";
 import { containedWorldObjectsIn, npcsAtLocation, worldObjectsAtLocation } from "../engine/placement";
 import { INTERACT_VERB_ALIASES } from "../engine/parsing/EnglishCommandParser";
 import { MapView } from "../mapview/MapView";
@@ -26,7 +25,7 @@ import type { ImageDraft } from "./imageEditor";
  * Locations live across many files under `src/content/city/locations/*.yaml`
  * (see `docs/content-schema.md`'s "Authoring workflow"); world objects
  * under `src/content/city/objects/*.yaml`; `npcs`/`labels`/`facts`/
- * `transitLines`/`passes` in `src/content/city/world.yaml`; location
+ * `notebookProducts` in `src/content/city/world.yaml`; location
  * PREFABS (reusable location templates — see `content/prefabLoader.ts`'s
  * doc comment) under `src/content/prefabs/*.yaml`, a SEPARATE tree from
  * `content/city/` entirely, since a prefab is never part of the live city
@@ -47,7 +46,7 @@ import type { ImageDraft } from "./imageEditor";
  * dirty-write save design (`regenerateLocationFile`/`regenerateObjectFile`/
  * `regeneratePrefabFile`); NPCs live in `world.yaml` instead, which has its
  * own single-file write-back (`regenerateWorldFile` — see `worldRaw`'s doc
- * comment) since `labels`/`facts`/`transitLines`/`passes` in that same file
+ * comment) since `labels`/`facts`/`notebookProducts` in that same file
  * remain hand-edit-only and are kept as an opaque parsed blob rather than
  * being reconstructed from typed content this editor doesn't otherwise
  * touch.
@@ -67,8 +66,8 @@ import type { ImageDraft } from "./imageEditor";
  * touched is left completely alone on disk — `save()` only rewrites files
  * it actually changed in memory — so opening the project and saving
  * without touching NPCs (or a particular location/object/prefab file) can
- * never destroy that file's comments. `transitLines`/`passes`, inside
- * `world.yaml`, still have no editor UI, but touching an NPC still rewrites
+ * never destroy that file's comments. `labels`/`facts`/`notebookProducts`,
+ * inside `world.yaml`, still have no editor UI, but touching an NPC still rewrites
  * the WHOLE `world.yaml` file (comments/formatting loss for the rest of it
  * too, same limitation), since a single file can't be partially rewritten.
  */
@@ -108,7 +107,7 @@ let worldYamlHandle: FileSystemFileHandle | null = null;
  * js-yaml's `load()`, kept as the living on-disk source of truth for the
  * WHOLE file — not just `npcs`. Unlike locations/objects/prefabs (each
  * reconstructed from typed, locale-stripped `city.*`/`prefabs.*` records
- * via a `*ToRaw` function), `labels`/`facts`/`transitLines`/`passes` here
+ * via a `*ToRaw` function), `labels`/`facts`/`notebookProducts` here
  * have no editor UI and no reason to round-trip through typed records —
  * reconstructing them would need new reversal logic for content this
  * editor never touches, for no benefit. So only `worldRaw.npcs` is ever
@@ -921,7 +920,7 @@ function onCurveDragged(edgeId: string, cx: number, cy: number): void {
   }
   for (const origin of touchedOrigins) regenerateLocationFile(origin);
   const first = entries[0]!;
-  status.textContent = `Curved connection between ${first.location.id} and ${first.connection.toId}${entries.length > 1 ? ` (${entries.length} connections, all directions/modes)` : ""}.`;
+  status.textContent = `Curved connection between ${first.location.id} and ${first.connection.toId}${entries.length > 1 ? ` (${entries.length} connections, all directions)` : ""}.`;
 }
 
 function onNodeClicked(id: string): void {
@@ -941,61 +940,19 @@ function onNodeClicked(id: string): void {
   mapView.setSelectedNode(null);
   if (fromId === id) return;
 
-  // Entering/exiting a building, or moving between two interiors of the
-  // SAME building (verified via exteriorId ownership, not just "one side
-  // is kind: interior" — see isInteriorHop's own doc comment), always
-  // gets a flat free 1-minute rate from the ENGINE regardless of what's
-  // stored here (transportModes.ts's hopMinutesAndCost checks
-  // isInteriorHop before ever looking at distanceKm/mode speed). Since
-  // distanceKm/modes are provably inert for a real interior hop, skip
-  // the prompts entirely and just record the flat 0.1km/foot-only values
-  // — asking the author to type numbers the engine will never use would
-  // be pure friction. It would NOT be safe to skip these prompts just
-  // because one side looks like an interior: a connection between
-  // UNRELATED buildings (exteriorId doesn't actually match) is a real,
-  // timed/priced hop the engine computes from distanceKm/modes, so that
-  // case still asks.
   // Two-way (see the toolbar's "Two-way" checkbox, default on) authors the
-  // reverse Connection too, mirroring whatever fields the forward one gets
-  // — including the interior-hop flat-rate special case below — so a
-  // two-way door between a building's exterior and its own interior is
-  // just as free/instant coming back as it was going in.
+  // reverse Connection too. A Connection is just `{ toId }` — travel has no
+  // distance, mode or cost — so there is nothing to prompt for.
   const touchedOrigins = new Set<string>();
   const markTouched = (locationId: string) => {
     const origin = locationOrigin.get(locationId);
     if (origin) touchedOrigins.add(origin);
   };
 
-  if (isInteriorHop({ locations: city.locations } as GameState, fromId, id)) {
-    city.locations[fromId]!.connections.push({ toId: id, distanceKm: 0.1, modes: ["foot"] });
-    markTouched(fromId);
-    if (twoWayOn) {
-      city.locations[id]!.connections.push({ toId: fromId, distanceKm: 0.1, modes: ["foot"] });
-      markTouched(id);
-    }
-    for (const origin of touchedOrigins) regenerateLocationFile(origin);
-    status.textContent = `Added interior connection ${fromId} → ${id}${twoWayOn ? " (two-way)" : ""} — flat rate, distance/mode don't affect travel time here.`;
-    render();
-    return;
-  }
-
-  const distanceStr = window.prompt("distanceKm:", "1");
-  const distanceKm = distanceStr ? Number(distanceStr) : NaN;
-  if (!Number.isFinite(distanceKm)) {
-    status.textContent = "distanceKm must be a number — connection not added.";
-    return;
-  }
-  const modesStr = window.prompt('modes (comma-separated, e.g. "foot,taxi"):', "foot");
-  const modes = (modesStr ?? "").split(",").map((m) => m.trim()).filter(Boolean) as TransportMode[];
-  if (modes.length === 0) {
-    status.textContent = "At least one mode is required — connection not added.";
-    return;
-  }
-
-  city.locations[fromId]!.connections.push({ toId: id, distanceKm, modes });
+  city.locations[fromId]!.connections.push({ toId: id });
   markTouched(fromId);
   if (twoWayOn) {
-    city.locations[id]!.connections.push({ toId: fromId, distanceKm, modes });
+    city.locations[id]!.connections.push({ toId: fromId });
     markTouched(id);
   }
   for (const origin of touchedOrigins) regenerateLocationFile(origin);

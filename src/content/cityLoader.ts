@@ -21,12 +21,9 @@ import type {
   NotebookProduct,
   Part,
   PartState,
-  Pass,
   Placement,
   StatBlock,
   StatKey,
-  TransitLine,
-  TransportMode,
   VisibilityTier,
   WorldObject,
 } from "../engine/types";
@@ -45,8 +42,8 @@ import { parseMemoryShorthand, parseRef } from "../engine/npc/memory";
  * several entries, author's choice of grouping — no wrapping key, since
  * the folder already establishes the category), discovered automatically
  * via Vite's `import.meta.glob` in `content/world.ts` — no manifest to
- * hand-maintain. `content/city/world.yaml` itself now holds only `npcs`/
- * `transitLines`/`passes` (small counts, not worth splitting yet).
+ * hand-maintain. `content/city/world.yaml` itself now hold only `npcs`/
+ * `labels`/`facts`/`notebookProducts` (small counts, not worth splitting yet).
  *
  * Every `nameKey`/`descriptionKey`/`dialogueKey` an author used to have to
  * ALSO type into a separate `i18n/content/<lang>.yaml` file is now an
@@ -66,9 +63,9 @@ import { parseMemoryShorthand, parseRef } from "../engine/npc/memory";
  * nowhere, would simply fail to compile). Content authored as external
  * YAML data loses that entirely — `parseYaml` hands back `unknown`. This
  * module puts the safety back: it validates structure (required fields,
- * correct types, enum values like `kind`/`modes`/`compassLabel`) AND
- * referential integrity (does this `toId`/`exteriorId`/`transitLineId`/
- * `locationId`/`itemIds`/`npcIds`/`lineIds`/`containerId`/
+ * correct types, enum values like `kind`/`compassLabel`) AND
+ * referential integrity (does this `toId`/`exteriorId`/
+ * `locationId`/`itemIds`/`npcIds`/`containerId`/
  * `containerPartId` actually point to something that exists, and is it
  * free of containment cycles).
  *
@@ -86,7 +83,7 @@ import { parseMemoryShorthand, parseRef } from "../engine/npc/memory";
 const BASELINE_LANGUAGE = "en";
 
 export interface CitySourceFiles {
-  /** `content/city/world.yaml`'s text — `npcs`/`transitLines`/`passes` only. */
+  /** `content/city/world.yaml`'s text — `npcs`/`labels`/`facts`/`notebookProducts` only. */
   world: string;
   /** path -> YAML text, each document a bare array of `WorldObject` entries — see this file's doc comment. */
   objectFiles: Record<string, string>;
@@ -107,8 +104,6 @@ export interface CityContent {
    * there. Every NPC has an entry.
    */
   initialNpcStates: Record<string, NpcState>;
-  transitLines: Record<string, TransitLine>;
-  passes: Record<string, Pass>;
   /** Every purchasable notebook product — see `NotebookProduct` and docs/systems/notebooks.md. */
   notebookProducts: Record<string, NotebookProduct>;
   /** Every fact the player could learn — see `Fact` and docs/systems/case-system.md. */
@@ -155,7 +150,6 @@ const VALID_KINDS = new Set(["exterior", "interior"]);
 const VALID_WORLD_OBJECT_KINDS = new Set(["item", "setpiece"]);
 /** Bounds the containment-chain walk in `checkContainmentCycles` — no authored case should ever nest a container this deep; hitting the limit means a cycle, not a legitimately deep chain. */
 const MAX_CONTAINMENT_DEPTH = 10;
-const VALID_MODES: ReadonlySet<TransportMode> = new Set(["foot", "car", "ship", "taxi", "bus"]);
 const VALID_VISIBILITY_TIERS: ReadonlySet<VisibilityTier> = new Set(["dark", "dim", "normal", "bright"]);
 const VALID_STAT_KEYS: ReadonlySet<StatKey> = new Set(Object.keys(STAT_DEFINITIONS) as StatKey[]);
 const VALID_DIRECTIONS: ReadonlySet<Direction> = new Set(["north", "south", "east", "west", "up", "down", "in", "out"]);
@@ -179,8 +173,6 @@ export function parseCity(files: CitySourceFiles): CityContent {
 
   const rawNpcs = expectArray(worldRoot.npcs, "world.yaml npcs", errors, {});
   const rawLabels = expectArray(worldRoot.labels, "world.yaml labels", errors, {});
-  const rawTransitLines = expectArray(worldRoot.transitLines, "world.yaml transitLines", errors, {});
-  const rawPasses = expectArray(worldRoot.passes, "world.yaml passes", errors, {});
   const rawNotebookProducts = expectArray(worldRoot.notebookProducts, "world.yaml notebookProducts", errors, {});
   const rawFacts = expectArray(worldRoot.facts, "world.yaml facts", errors, {});
 
@@ -198,18 +190,6 @@ export function parseCity(files: CitySourceFiles): CityContent {
   const labels = buildById(tagEntries(rawLabels, "world.yaml labels"), "labels", errors, (raw, where, errs) =>
     validateLabel(raw, where, errs, locale),
   );
-  const transitLines = buildById(
-    tagEntries(rawTransitLines, "world.yaml transitLines"),
-    "transitLines",
-    errors,
-    (raw, where, errs) => validateTransitLine(raw, where, errs, locale),
-  );
-  const passes = buildById(
-    tagEntries(rawPasses, "world.yaml passes"),
-    "passes",
-    errors,
-    (raw, where, errs) => validatePass(raw, where, errs, locale),
-  );
   const notebookProducts = buildById(
     tagEntries(rawNotebookProducts, "world.yaml notebookProducts"),
     "notebookProducts",
@@ -226,11 +206,6 @@ export function parseCity(files: CitySourceFiles): CityContent {
     for (const connection of location.connections) {
       if (!parsedLocations[connection.toId]) {
         errors.push(`location "${location.id}" has a connection to "${connection.toId}", which doesn't exist.`);
-      }
-      if (connection.transitLineId && !transitLines[connection.transitLineId]) {
-        errors.push(
-          `location "${location.id}" has a connection to "${connection.toId}" with transitLineId "${connection.transitLineId}", which has no entry in transitLines.`,
-        );
       }
     }
     if (location.kind === "interior") {
@@ -312,11 +287,6 @@ export function parseCity(files: CitySourceFiles): CityContent {
       if (!labels[otherId]) errors.push(`label "${label.id}" has labelOpinions for "${otherId}", which has no entry in labels.`);
     }
   }
-  for (const pass of Object.values(passes)) {
-    for (const lineId of pass.lineIds) {
-      if (!transitLines[lineId]) errors.push(`pass "${pass.id}" lists lineIds "${lineId}", which has no entry in transitLines.`);
-    }
-  }
   for (const worldObject of Object.values(parsedWorldObjects)) {
     if (worldObject.containerId === undefined) continue;
     const container = parsedWorldObjects[worldObject.containerId];
@@ -374,8 +344,6 @@ export function parseCity(files: CitySourceFiles): CityContent {
     npcs,
     labels,
     initialNpcStates,
-    transitLines,
-    passes,
     notebookProducts,
     facts,
     initialPlacement: { worldObjectLocationId, npcLocationId, containedIn },
@@ -552,16 +520,10 @@ function validateConnection(raw: unknown, where: string, errors: string[]): Conn
     return undefined;
   }
   const toId = expectString(raw.toId, `${where}.toId`, errors);
-  const distanceKm = expectNumber(raw.distanceKm, `${where}.distanceKm`, errors);
-  const modes = expectStringArray(raw.modes, `${where}.modes`, errors)?.filter((mode) => {
-    if (VALID_MODES.has(mode as TransportMode)) return true;
-    errors.push(`${where}.modes has "${mode}" — must be one of: ${[...VALID_MODES].join(", ")}.`);
-    return false;
-  }) as TransportMode[] | undefined;
 
-  if (toId === undefined || distanceKm === undefined || modes === undefined) return undefined;
+  if (toId === undefined) return undefined;
 
-  const connection: Connection = { toId, distanceKm, modes };
+  const connection: Connection = { toId };
   if (raw.compassLabel !== undefined) {
     const compassLabel = expectString(raw.compassLabel, `${where}.compassLabel`, errors);
     if (compassLabel !== undefined) {
@@ -570,22 +532,6 @@ function validateConnection(raw: unknown, where: string, errors: string[]): Conn
       } else {
         connection.compassLabel = compassLabel as Direction;
       }
-    }
-  }
-  if (raw.transitLineId !== undefined) {
-    const transitLineId = expectString(raw.transitLineId, `${where}.transitLineId`, errors);
-    if (transitLineId !== undefined) connection.transitLineId = transitLineId;
-  }
-  if (raw.costsMinor !== undefined) {
-    if (!isRecord(raw.costsMinor)) {
-      errors.push(`${where}.costsMinor is not a mapping.`);
-    } else {
-      const costsMinor: Partial<Record<TransportMode, number>> = {};
-      for (const [mode, value] of Object.entries(raw.costsMinor)) {
-        const amount = expectNumber(value, `${where}.costsMinor.${mode}`, errors);
-        if (amount !== undefined) costsMinor[mode as TransportMode] = amount;
-      }
-      connection.costsMinor = costsMinor;
     }
   }
   if (raw.curve !== undefined) {
@@ -1227,37 +1173,6 @@ function checkConditionReferences(
   } else if ("playerKnows" in condition && !facts[condition.playerKnows]) {
     errors.push(`${where} references fact "${condition.playerKnows}", which has no entry in facts.`);
   }
-}
-
-function validateTransitLine(raw: unknown, where: string, errors: string[], locale: Record<string, Record<string, string>>): TransitLine | undefined {
-  if (!isRecord(raw)) {
-    errors.push(`${where} is not a mapping.`);
-    return undefined;
-  }
-  const id = expectString(raw.id, `${where}.id`, errors);
-  if (id === undefined) return undefined;
-
-  const fareMinor = expectNumber(raw.fareMinor, `${where}.fareMinor`, errors);
-  const fields = validateText(raw.text, where, errors, locale, `line.${id}`, ["name"]);
-  if (fields === undefined || fareMinor === undefined) return undefined;
-  return { id, nameKey: `line.${id}.name`, fareMinor };
-}
-
-function validatePass(raw: unknown, where: string, errors: string[], locale: Record<string, Record<string, string>>): Pass | undefined {
-  if (!isRecord(raw)) {
-    errors.push(`${where} is not a mapping.`);
-    return undefined;
-  }
-  const id = expectString(raw.id, `${where}.id`, errors);
-  if (id === undefined) return undefined;
-
-  const aliases = expectStringArrayOr(raw.aliases, `${where}.aliases`, errors, []);
-  const priceMinor = expectNumber(raw.priceMinor, `${where}.priceMinor`, errors);
-  const durationDays = expectNumber(raw.durationDays, `${where}.durationDays`, errors);
-  const lineIds = expectStringArrayOr(raw.lineIds, `${where}.lineIds`, errors, []);
-  const fields = validateText(raw.text, where, errors, locale, `pass.${id}`, ["name"]);
-  if (fields === undefined || priceMinor === undefined || durationDays === undefined) return undefined;
-  return { id, nameKey: `pass.${id}.name`, aliases, priceMinor, durationDays, lineIds };
 }
 
 function validateNotebookProduct(

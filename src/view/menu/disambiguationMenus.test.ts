@@ -5,9 +5,14 @@ import type { ResolutionChoice } from "../../engine/types";
 import { buildDisambiguationScreen } from "./disambiguationMenus";
 import type { ChoiceMenuScreen } from "./MenuFlow";
 
+/** Two objects in the main room answer to "stack"; the workspace is made portable so the id-based follow-up can take it. */
 function makeAmbiguousExamineResult(engine: GameEngine) {
-  engine.getState().worldObjects["torn-photograph"]!.aliases.push("case file");
-  return engine.examine("case file");
+  engine.travelTo("main room");
+  const objects = engine.getState().worldObjects;
+  objects["workspace"]!.aliases.push("stack");
+  objects["workspace"]!.portable = true;
+  objects["computer-desk"]!.aliases.push("stack");
+  return engine.examine("stack");
 }
 
 describe("buildDisambiguationScreen", () => {
@@ -29,13 +34,13 @@ describe("buildDisambiguationScreen", () => {
     const choices = result.choices as ResolutionChoice[];
     const screen = buildDisambiguationScreen(result.events, choices, (id) => engine.takeItem({ id })) as ChoiceMenuScreen;
 
-    const photographIndex = choices.findIndex((c) => c.id === "torn-photograph");
+    const photographIndex = choices.findIndex((c) => c.id === "workspace");
     const outcome = screen.options[photographIndex]!.select();
 
     expect(outcome).toEqual({ type: "exit", events: expect.arrayContaining([expect.objectContaining({ type: "item_taken" })]) });
-    expect(engine.getState().player.inventory).toEqual(["torn-photograph"]);
-    // The still-ambiguous "case-file" alias was never touched — proves
+    expect(engine.getState().player.inventory).toEqual(["workspace"]);
+    // The still-ambiguous "stack" alias was never touched — proves
     // resolution went by id, not by re-running alias matching.
-    expect(engine.getState().placement.worldObjectLocationId["case-file"]).toBe("office");
+    expect(engine.getState().placement.worldObjectLocationId["computer-desk"]).toBe("studio-mainroom");
   });
 });

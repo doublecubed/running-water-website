@@ -12,52 +12,12 @@ export type NpcId = string;
 export type PartId = string;
 
 /**
- * Compass words are NOT a fixed exit system anymore — see
- * docs/systems/navigation.md. They only ever label a Connection as a
- * convenience alias ("go north" instead of naming the destination), and
- * the parser normalizes typed direction words to these canonical values.
- * `in`/`out` are just two more values in this same set — see
- * docs/systems/navigation.md's "Interiors" section. Using them as a
- * `compassLabel` is a naming choice for unambiguous single-door cases;
- * it has NO effect on whether a hop gets the flat interior rate (that's
- * derived from Location.kind/exteriorId — see navigation/interiorHops.ts
- * — regardless of which direction word, if any, labels the connection).
+ * Compass words are NOT a fixed exit system — see docs/systems/navigation.md.
+ * They only ever label a Connection as a convenience alias ("go north"
+ * instead of naming the destination), and the parser normalizes typed
+ * direction words to these canonical values.
  */
 export type Direction = "north" | "south" | "east" | "west" | "up" | "down" | "in" | "out";
-
-/** A mode of transport usable on a Connection. Extend as new modes are needed. */
-export type TransportMode = "foot" | "car" | "ship" | "taxi" | "bus";
-
-/**
- * A mixed-mode route-optimization goal — "fastest" (minimize time) or
- * "cheapest" (minimize cost) — that lets Dijkstra freely switch transport
- * mode hop-to-hop to hit that goal, rather than sticking to one mode (see
- * `TravelCategory` below, which is what ordinary play uses instead as of
- * the fare-system redesign). Kept alongside `TravelCategory`, and still
- * fully implemented (`navigation/pathfinding.ts`'s `findRoute`/`pickMode`),
- * for a future "navigator device" item that shows the player the true
- * mixed-mode fastest/cheapest routes — not reachable through ordinary
- * `inquire`/`travel` today, only via `TravelOverride.strategy`. See
- * docs/systems/economy.md.
- */
-export type TravelStrategy = "fastest" | "cheapest";
-
-/**
- * The natural "how am I getting there" choice a player actually considers
- * — foot, public transit, or taxi (a future "car" category is expected
- * once the player can own one, see docs/systems/economy.md) — as opposed
- * to an abstract optimization goal like `TravelStrategy`. Drives both:
- *  - which mode gets used per connection: the category's own mode where
- *    it's offered, else "foot", else whatever's forced (e.g. the
- *    ship-only pier crossing) — see navigation/pathfinding.ts's
- *    `pickModeForCategory`/`findCategoryRoute`.
- *  - `Player.travelPreference`, the player's standing default for
- *    ordinary moves and the direct-connections menu.
- * A named-destination inquiry computes one route per category and labels
- * whichever comes out fastest/cheapest accordingly — see
- * docs/systems/economy.md.
- */
-export type TravelCategory = "foot" | "transit" | "taxi";
 
 /**
  * A one-way link from one Location to another. Content authors must add
@@ -67,33 +27,8 @@ export type TravelCategory = "foot" | "transit" | "taxi";
  */
 export interface Connection {
   toId: LocationId;
-  /** Distance in kilometers. Combined with a mode's speed to compute travel time — see navigation/transportModes.ts. */
-  distanceKm: number;
-  /** Transport modes usable on this specific connection (e.g. a car can't use an alley). "foot" is not implied — list it explicitly if walking is possible. */
-  modes: TransportMode[];
   /** Optional convenience alias so "go north" resolves this exact connection without naming the destination. */
   compassLabel?: Direction;
-  /**
-   * Minor-unit fare for using a given mode on THIS connection — e.g.
-   * `{ bus: 15 }` = $0.15 by bus, for a one-off flat-fare hop with no
-   * line concept. A mode with no entry here (foot, typically) is free.
-   * `taxi` ignores this entirely (see TAXI_FARE in
-   * navigation/transportModes.ts — it's a metered formula, not a stored
-   * number); a connection with `transitLineId` set also ignores this for
-   * that mode, since the fare comes from the TransitLine instead. See
-   * docs/systems/economy.md. Not yet charged on travel — that's a later
-   * staged step; this is the data model only.
-   */
-  costsMinor?: Partial<Record<TransportMode, number>>;
-  /**
-   * Marks this connection as part of a named transit line (a bus/train/
-   * ferry route with multiple stops) — see `TransitLine` below. The fare
-   * is paid once per boarding, not per hop: riding consecutive
-   * connections that share the same `transitLineId` is free after the
-   * first. Independent of `TransportMode` — any mode could in principle
-   * be line-based, not just "bus". See docs/systems/economy.md.
-   */
-  transitLineId?: string;
   /**
    * Optional single quadratic-bezier control point bending this
    * connection's line on the map canvas (src/mapview/MapView.ts) instead
@@ -101,66 +36,6 @@ export interface Connection {
    * nothing in the engine reads it. Absent means a straight line.
    */
   curve?: { cx: number; cy: number };
-}
-
-/**
- * A named transit line (bus route, train line, ferry route) with one
- * flat fare regardless of how many of its connections a rider takes
- * consecutively. See `Connection.transitLineId`, which tags the
- * connections that belong to this line.
- */
-export interface TransitLine {
-  id: string;
-  /** Localization key for the line's display name, e.g. "Bus Line 7". */
-  nameKey: string;
-  /** Minor-unit fare to board this line, paid once per boarding — see docs/systems/economy.md. */
-  fareMinor: number;
-}
-
-/**
- * A purchasable pass giving free rides on one or more TransitLines for a
- * number of CALENDAR DAYS — see `GameEngine.buyPass` and
- * docs/systems/economy.md. `lineIds` is an array, not a single id, so a
- * future pass can cover an entire network (all city bus lines, a train
- * network, ...) without changing this shape — content just lists more
- * ids; nothing about how a pass is checked or bought needs to know
- * whether it covers one line or many.
- */
-export interface Pass {
-  id: string;
-  /** Localization key for the pass's display name, e.g. "Bus Line 1 Weekly Pass". */
-  nameKey: string;
-  /** Words the command parser accepts to name this pass, e.g. ["weekly pass", "bus pass"]. */
-  aliases: string[];
-  /** Minor-unit price to buy the pass once. */
-  priceMinor: number;
-  /**
-   * How many CALENDAR DAYS the pass covers once bought — always expires
-   * at a day boundary (midnight starting the day after the Nth), never a
-   * fixed minute count from the moment of purchase. See
-   * `minutesUntilDayAlignedExpiry` in engine/time/calendar.ts for the
-   * exact arithmetic and why a naive `days * 1440` would drift.
-   */
-  durationDays: number;
-  /** Which TransitLine(s) riding for free requires holding this pass for — see `costOfMode` in navigation/transportModes.ts. */
-  lineIds: string[];
-}
-
-/**
- * One pass the player has bought and may still be riding free on.
- * `expiresAtMinutesElapsed` is an ABSOLUTE `GameClock.minutesElapsed`
- * reading, computed once at purchase (`GameEngine.buyPass`) — checking
- * validity anywhere is just `clock.minutesElapsed < expiresAtMinutesElapsed`,
- * never a decrement. This is the general pattern for any future
- * countdown/deadline in this project (case deadlines, NPC schedules,
- * evidence windows, ...) — see engine/time/calendar.ts's module doc
- * comment and docs/systems/time.md's "Time-sensitive state" section:
- * store an absolute trigger minute, compare lazily against the current
- * clock, never mutate a stored remaining-duration as time passes.
- */
-export interface ActivePass {
-  passId: string;
-  expiresAtMinutesElapsed: number;
 }
 
 interface BaseLocation {
@@ -177,8 +52,7 @@ interface BaseLocation {
    * docs/content-schema.md. Absent for locations not yet placed on the
    * map; such a location simply can't be rendered there, not an error.
    * Purely a presentation coordinate — nothing in the engine reads these
-   * for navigation/pathfinding, which is graph-distance-based
-   * (Connection.distanceKm), not spatial.
+   * for navigation/pathfinding, which is graph-based, not spatial.
    */
   x?: number;
   y?: number;
@@ -503,7 +377,7 @@ export interface Observation {
   locationId?: LocationId;
 }
 
-/** One thing an NPC remembers. JSON-safe by construction — it round-trips through save/load. */
+/** One thing an NPC remembers. JSON-safe by construction — it is plain data. */
 export interface Memory extends Observation {
   /** `GameClock.minutesElapsed` when it happened (0 for memories authored as pre-game history). */
   atMinutes: number;
@@ -693,8 +567,8 @@ export interface Npc {
  * catalog — see the project's procedural-case-content plan) and can change
  * during play (an NPC walking somewhere, an object being moved) — it is
  * NOT part of the static city/catalog content that reloads unchanged from
- * YAML every launch. This is exactly the slice a save file persists,
- * alongside `Player`/`GameClock` — see docs/systems/save.md. A location/
+ * YAML every launch. This is mutable state, alongside
+ * `Player`/`GameClock` (nothing is persisted). A location/
  * NPC with nothing placed there simply has no entry pointing at it;
  * nothing needs an empty-array placeholder.
  */
@@ -858,8 +732,8 @@ export interface BoardConnection {
  * things they've already encountered (known facts, NPCs met, locations
  * visited, inventory items) plus free-text notes, connected by colored
  * strings the player draws themselves. No auto-inference, no contradiction
- * detection — see docs/systems/case-board.md. Part of the mutable slice a
- * save persists, sibling to `notebooks`/`flags`/`playerFacts` on
+ * detection — see docs/systems/case-board.md. Part of the mutable slice,
+ * sibling to `notebooks`/`flags`/`playerFacts` on
  * `GameState`, per `CLAUDE.md` boundary #6. JSON-safe (plain arrays only).
  */
 export interface BoardState {
@@ -879,26 +753,6 @@ export interface Player {
    */
   money: number;
   /**
-   * The TransitLine id the player currently holds a valid, unexpired
-   * fare for — null if not currently riding one. Set when boarding a
-   * line-based connection (paying its fare), cleared the moment the
-   * player takes any connection that isn't part of the same line
-   * (walking away, driving, or boarding a different line). This is what
-   * makes consecutive same-line hops free transfers rather than
-   * independently-fared hops — see Connection.transitLineId and
-   * docs/systems/economy.md. Not yet read/written anywhere — travel
-   * execution charging is a later staged step; this is the data model
-   * only, same as `money` was before spendMoney existed.
-   */
-  boardedLineId: string | null;
-  /**
-   * The player's default travel category — see TravelCategory. Read by
-   * GameEngine.travelTo (both the compass fast path and pathfound routes)
-   * to decide which mode to pick per connection. Changed via the
-   * `prefer`/`preference` command (setTravelPreference).
-   */
-  travelPreference: TravelCategory;
-  /**
    * Every LocationId the player has ever actually arrived at, in first-
    * visit order — set once by `content/world.ts`'s `createInitialState`
    * (containing at least the starting location) and grown by
@@ -908,10 +762,8 @@ export interface Player {
    * only" instead of listing the whole map — see docs/systems/navigation.md.
    */
   visitedLocationIds: LocationId[];
-  /** Every Pass the player has bought and may still be riding free on — see ActivePass and `GameEngine.buyPass`. A lapsed entry is simply never valid again; nothing prunes it, since checking is a cheap lazy comparison either way. */
-  activePasses: ActivePass[];
   /**
-   * Player's own stat values — added in SAVE_SCHEMA_VERSION 8. Optional
+   * Player's own stat values. Optional
    * and NOT eagerly populated for every StatKey: a fresh game/save may
    * omit a key (or the whole object) entirely, and getStatValue falls
    * back to that stat's own registry default, same as an NPC authored
@@ -924,7 +776,7 @@ export interface Player {
    * Whether the player currently intends to be sneaking — set only by the
    * `sneak` verb (GameEngine.toggleStealth). Persists across a failed
    * concealment roll; see `concealment` below and docs/systems/checks.md.
-   * Added in SAVE_SCHEMA_VERSION 9.
+   *
    */
   stealthMode: boolean;
   /**
@@ -932,7 +784,7 @@ export interface Player {
    * undefined when not currently sneaking, or before the first roll.
    * Refreshed by toggleStealth(true) and by every successful travel while
    * already sneaking; see GameEngine.rerollConcealment and
-   * docs/systems/checks.md. Added in SAVE_SCHEMA_VERSION 9.
+   * docs/systems/checks.md.
    */
   concealment?: CheckOutcomeTier;
 }
@@ -959,8 +811,6 @@ export interface GameState {
   npcs: Record<NpcId, Npc>;
   /** Every label definition — static content, see `NpcLabel`. */
   labels: Record<LabelId, NpcLabel>;
-  transitLines: Record<string, TransitLine>;
-  passes: Record<string, Pass>;
   /** Every purchasable notebook product — static content, like `passes`, sold through the same generalized `buy` menu. See `NotebookProduct` and docs/systems/notebooks.md. */
   notebookProducts: Record<string, NotebookProduct>;
   /** Every fact the player could learn — static content. See `Fact` and docs/systems/case-system.md. */
@@ -971,20 +821,15 @@ export interface GameState {
    * Current state id per world object/part — `partStates[objectId][partId]`.
    * Only objects with `parts` have an entry; each part starts at its own
    * `defaultStateId`, seeded by `cityLoader.ts`'s `initialPartStates`
-   * (mirrors how `initialPlacement` seeds `placement`). PERSISTED across
-   * save/load, same as `placement` — see docs/systems/save.md and
-   * docs/systems/parts.md. A part added to content after a save was made
-   * simply falls back to its `defaultStateId` at read time (see
-   * `GameEngine`'s `currentPartStateId` helper) rather than needing a
-   * migration step.
+   * (mirrors how `initialPlacement` seeds `placement`). See docs/systems/parts.md. A part with no
+   * entry here falls back to its `defaultStateId` at read time (see
+   * `GameEngine`'s `currentPartStateId` helper).
    */
   partStates: Record<WorldObjectId, Record<PartId, string>>;
   /**
    * Which world object (if any) is currently "focused" via `examine` —
-   * see docs/systems/parts.md's focus-mode rules. Deliberately NOT part
-   * of `SaveData` (see `engine/save/save.ts`): always resets to `null` on
-   * load, the same posture `MenuFlow`'s screen stack already has, since
-   * it's a transient interaction mode, not simulation state worth saving.
+   * see docs/systems/parts.md's focus-mode rules. A transient
+   * interaction mode (like `MenuFlow`'s screen stack), not simulation state.
    * Lives here rather than on the view because the resolution rules that
    * read it (`examine`/`interact`) are core simulation logic.
    */
@@ -993,29 +838,28 @@ export interface GameState {
    * What the player is currently examining, for the scene image pane — see
    * `GameEngine.getSceneImage` and docs/systems/image-pane.md. Broader than
    * `focusedWorldObjectId` (which only tracks objects with parts): plain
-   * objects and NPCs count too. Transient like focus — NOT in `SaveData`,
-   * always `null` after a load — and cleared at the same places focus is.
+   * objects and NPCs count too. Transient like focus, and cleared at the same places focus is.
    */
   examinedTarget: ExaminedTarget | null;
   player: Player;
   clock: GameClock;
-  /** Every notebook the player owns, plus which (if any) is active — see `NotebookState` and docs/systems/notebooks.md. Part of the mutable slice a save persists. */
+  /** Every notebook the player owns, plus which (if any) is active — see `NotebookState` and docs/systems/notebooks.md. Part of the mutable slice. */
   notebooks: NotebookState;
-  /** Global flat flag store for dialogue conditions (and, later, case/deduction state) — see docs/systems/dialogue.md. Part of the mutable slice a save persists. */
+  /** Global flat flag store for dialogue conditions (and, later, case/deduction state) — see docs/systems/dialogue.md. Part of the mutable slice. */
   flags: Record<string, boolean>;
-  /** Per-NPC mutable state (trust, memories, opinions, knowledge) — see `NpcState` and docs/systems/npcs.md. Part of the mutable slice a save persists. */
+  /** Per-NPC mutable state (trust, memories, opinions, knowledge) — see `NpcState` and docs/systems/npcs.md. Part of the mutable slice. */
   npcStates: Record<NpcId, NpcState>;
-  /** The player's public reputation — see `Reputation`. Part of the mutable slice a save persists. */
+  /** The player's public reputation — see `Reputation`. Part of the mutable slice. */
   reputation: Reputation;
   /**
    * Facts the player has learned, keyed by `FactId`, with when they first
    * learned it — set only via `learnFact` (`state.ts`), idempotent (first-
    * learned time wins). Joined with `facts` (the authored text) by
-   * `GameEngine.getPlayerFacts()`. Part of the mutable slice a save
-   * persists. See docs/systems/case-system.md.
+   * `GameEngine.getPlayerFacts()`. Part of the mutable slice. See
+   * docs/systems/case-system.md.
    */
   playerFacts: Record<FactId, { atMinutes: number }>;
-  /** The player's case board — see `BoardState`. Part of the mutable slice a save persists. */
+  /** The player's case board — see `BoardState`. Part of the mutable slice. */
   board: BoardState;
 }
 
@@ -1032,40 +876,9 @@ export interface GameEvent {
 }
 
 /**
- * One selectable follow-up option from an action — produced by
- * `GameEngine.inquireTravel` and `GameEngine.listDirectConnections` (see
- * docs/systems/economy.md). `id` is NOT player-facing text; it's what a
- * view echoes back (unmodified) to execute the specific option the player
- * picked, per `kind`:
- *  - `"mode"` → `travelTo(query, { mode: id as TransportMode })`
- *  - `"category"` → `travelTo(query, { category: id as TravelCategory })`
- *  - `"destination"` → `travelToConnection(id as LocationId)`
- *
- * `kind` is deliberately travel-specific rather than a fully generic
- * choice shape — see `ResolutionChoice` below for the second use case
- * that eventually justified giving `ActionResult.choices` a real union
- * instead of generalizing this one further.
- *
- * `aliases`, when present, are extra lowercase words (besides the numbered
- * position) a view may accept to select this option directly — e.g. the
- * category name itself (`"taxi"`), or `"fastest"`/`"cheapest"` when this
- * option happens to carry that label. Purely a selection convenience;
- * `id` is still what gets echoed back to the engine. See
- * `src/view/menu/travelMenus.ts`.
- */
-export interface TravelChoice {
-  id: string;
-  kind: "mode" | "category" | "destination";
-  textKey: string;
-  params?: Record<string, string>;
-  aliases?: string[];
-}
-
-/**
  * One candidate when a query (e.g. `examine("letter")`) matched more than
  * one `WorldObject` in scope — see `GameEngine`'s `resolveWorldObjectQuery`
- * and docs/systems/parts.md's "Ambiguous targets." Unlike `TravelChoice`,
- * `id` is a real `WorldObjectId`, not an opaque string the view re-quotes
+ * and docs/systems/parts.md's "Ambiguous targets." `id` is a real `WorldObjectId`, not an opaque string the view re-quotes
  * back as text — a view resolves the player's pick via the id-based
  * overload of the verb that produced the ambiguity (e.g.
  * `examine({ id })`), never by re-running alias matching on the option's
@@ -1092,7 +905,7 @@ export interface ResolutionChoice {
  * deliberately NOT persisted engine-side — there is no "pending choice"
  * in GameState. The engine never remembers what it last offered; a view
  * remembers, and a selection becomes an ordinary, fully-specified
- * follow-up call (e.g. `travelTo(query, { strategy })`) that re-derives
+ * follow-up call (e.g. `examine({ id })`) that re-derives
  * the same result deterministically rather than replaying stored state.
  * This keeps the engine's per-call statelessness intact — see CLAUDE.md's
  * engine/view boundary — interaction-mode state belongs to the view.
@@ -1100,5 +913,5 @@ export interface ResolutionChoice {
 export interface ActionResult {
   ok: boolean;
   events: GameEvent[];
-  choices?: (TravelChoice | ResolutionChoice)[];
+  choices?: ResolutionChoice[];
 }

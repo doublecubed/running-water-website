@@ -44,27 +44,19 @@ needed, flag it explicitly and explain what new constraint forced it.
    web bundle; wrapping it into a desktop `.exe` (Tauri preferred, Electron
    as fallback) happens without changes to engine or view code.
 
-6. **Save/load only persists the mutable-state slice of `GameState`, never
-   content.** `GameState` splits into authored content (`locations`, `items`,
-   `npcs`, `transitLines`, `passes` — loaded fresh from
-   `src/content/city/world.yaml` via `cityLoader.ts` every launch, never
-   written to a save) and mutable progress (`player`, `clock`, and any future
-   sibling — case/deduction state, dialogue flags, NPC relationship/schedule
-   state). A save file captures only the mutable slice; loading reloads
-   content from disk and merges the saved slice on top. This means:
-   - Any new system's persistent state (a case-progress tracker, an NPC
-     schedule, a dialogue-flag set, ...) must live in the mutable slice
-     (`Player` or a new sibling struct next to it), not mixed into a content
-     record — otherwise it silently won't survive save/load.
-   - Every field added to the mutable slice must be JSON-safe (plain
-     records/arrays/primitives — no `Map`/`Set`, no class instances with
-     methods, no circular references), since it round-trips through
-     serialization.
-   - Any change to the mutable slice's shape needs a save-schema version
-     bump and a migration path — assume existing saves must keep loading.
-   - No save/load system exists yet (see `docs/architecture.md`); this rule
-     applies from the first implementation onward, and to every system added
-     before or after it.
+6. **There is no save/load; content and mutable state stay separate.** The
+   website has no persistence (the save system was removed), but the split
+   remains: `GameState` has authored content (`locations`, `items`, `npcs`,
+   `notebookProducts`, ... loaded fresh from `src/content/city/world.yaml` via
+   `cityLoader.ts` every launch) and mutable progress (`player`, `clock`,
+   placement, dialogue flags, NPC state). This means:
+   - Per-session state belongs in the mutable slice (`Player` or a sibling
+     struct), never mixed into a content record, so content stays reloadable
+     and clonable (`loadCityContent` returns a fresh clone each time).
+   - Keep mutable state JSON-safe (plain records/arrays/primitives, no
+     `Map`/`Set`/class instances): it keeps tests simple and leaves
+     persistence possible later without a rewrite.
+   - Nothing needs a schema version or migration while nothing is saved.
 
 ## Tech stack
 

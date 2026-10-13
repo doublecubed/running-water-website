@@ -190,7 +190,7 @@ click cannot index into a different screen. View-only; no engine change.
 - **Engine core** (`docs/systems/engine-core.md`): `GameState.flags` joins
   `player`/`clock`/`placement`/`partStates`/`notebooks` as a mutable-slice
   field, saved and restored like the rest.
-- **Save** (`docs/systems/save.md`): `flags` is why `SAVE_SCHEMA_VERSION`
+- **Save** (system since removed; historical note): `flags` is why `SAVE_SCHEMA_VERSION`
   bumped from 9 to 10; a pre-existing save backfills `flags: {}` (nobody
   had talked to anyone before this system existed).
 - **Content schema** (`docs/content-schema.md`): the Npc locale-key table

@@ -22,13 +22,12 @@ export interface ConnectionEdgeGroup {
 /**
  * Groups every real `Connection` among `locations` by UNORDERED location
  * pair rather than one `MapEdge` per `Connection` — see the (now-applied)
- * plan this implements, `docs/context.md`'s history. A foot path and a bus
- * line between the same two locations are two independent `Connection`
- * objects (the engine needs that granularity for fares/transit lines), but
- * from a player's perspective they're the same fact — "can I get there" —
- * so they render as ONE `MapEdge`, with `arrows` (which direction(s) have
- * at least one real Connection) and a hover `tooltip` summarizing modes,
- * split by direction only when the two directions actually differ.
+ * plan this implements, `docs/context.md`'s history. Two `Connection`s between the same
+ * two locations (e.g. one each way) are independent objects, but from a
+ * player's perspective they're the same fact — "can I get there" — so they
+ * render as ONE `MapEdge`, with `arrows` (which direction(s) have at least one
+ * real Connection) and a hover `tooltip` listing compass labels, split by
+ * direction only when the two directions actually differ.
  *
  * Shared by the editor (which also needs `entries` back, to mutate the
  * underlying Connections on a curve drag and to know which location — and
@@ -64,8 +63,8 @@ export function buildConnectionEdges(locations: Location[], nameOf: (locationId:
     if (forwardEntries.length > 0) arrows.push("forward");
     if (backwardEntries.length > 0) arrows.push("backward");
 
-    const forwardLabel = forwardEntries.map(connectionLabel).join(", ");
-    const backwardLabel = backwardEntries.map(connectionLabel).join(", ");
+    const forwardLabel = forwardEntries.map(connectionLabel).filter(Boolean).join(", ");
+    const backwardLabel = backwardEntries.map(connectionLabel).filter(Boolean).join(", ");
     const tooltip =
       forwardLabel && backwardLabel && forwardLabel !== backwardLabel
         ? `${nameOf(a)} → ${nameOf(b)}: ${forwardLabel}\n${nameOf(b)} → ${nameOf(a)}: ${backwardLabel}`
@@ -82,9 +81,7 @@ export function buildConnectionEdges(locations: Location[], nameOf: (locationId:
   return result;
 }
 
-/** e.g. "foot" or "bus (line-1)" — a single Connection's modes plus its transit line id, if any. Kept id-based rather than resolving the line's own display name, since this module has no locale table to resolve it against (see this file's doc comment on `nameOf`). */
+/** A single Connection's compass label ("north", ...), or "" if it has none. */
 function connectionLabel(entry: ConnectionGroupEntry): string {
-  const { connection } = entry;
-  const modes = connection.modes.join("/");
-  return connection.transitLineId ? `${modes} (${connection.transitLineId})` : modes;
+  return entry.connection.compassLabel ?? "";
 }

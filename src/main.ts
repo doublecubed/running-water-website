@@ -8,9 +8,8 @@ import { localEpoch } from "./view/wallClock";
 const ACTIVE_LANGUAGE = "en"; // Swap via engine/parsing/registry + i18n/resolver's TABLES when a second language is added.
 
 const appEl = document.querySelector<HTMLDivElement>("#app")!;
-// The clock shows the visitor's real local time (view.startWallClock below), so the
-// engine gets an external clock: travel no longer advances time itself.
-const engine = new GameEngine(createInitialState({ epoch: localEpoch() }), Math.random, { externalClock: true });
+// The clock shows the visitor's real local time, fed in by view.startWallClock below.
+const engine = new GameEngine(createInitialState({ epoch: localEpoch() }), Math.random);
 // import.meta.env.DEV (Vite) is a build-time flag: true under `npm run
 // dev`, statically false and dead-code-eliminated in a production build
 // — so dev-only verbs (devmoney, devlocations) simply don't exist for a

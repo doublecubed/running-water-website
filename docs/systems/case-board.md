@@ -93,7 +93,7 @@ has.
 
 ## Save integration
 
-`SAVE_SCHEMA_VERSION` bumped 12 → 13 (see `docs/systems/save.md`).
+`SAVE_SCHEMA_VERSION` bumped 12 → 13 (see the (removed) save system).
 `board` is a REQUIRED field (a fresh board is `{ nodes: [], connections:
 [] }`, not optional/undefined), so the 12→13 migration step does a real
 backfill rather than just accepting the version bump — matching the
@@ -230,7 +230,7 @@ above) — nothing further was needed for those in this stage.
 - **Navigation** (`docs/systems/navigation.md`): location nodes are
   gated by `Player.visitedLocationIds`, the same list the locations
   panel already uses for its spoiler-safe default.
-- **Save** (`docs/systems/save.md`): `board` is part of the mutable
+- **Save** (system since removed; historical note): `board` is part of the mutable
   slice — see "Save integration" above.
 
 ## Known gaps

@@ -6,9 +6,9 @@ import type { LocationId, NpcId, PartId, Placement, WorldObjectId } from "./type
  * forward direction (id -> locationId, or id -> {containerId, partId}).
  * Shared by `GameEngine` (rendering `look`/`examine`/`takeItem`) and the
  * map editor's `save()` (reconstructing each location's authored
- * `itemIds`/`npcIds` list when writing `world.yaml` back out) — see
- * docs/systems/save.md for why placement lives here instead of on
- * `Location`/`Npc` directly.
+ * `itemIds`/`npcIds` list when writing `world.yaml` back out) — placement
+ * lives here instead of on `Location`/`Npc` directly so it can change in play
+ * without touching authored content.
  */
 
 export function worldObjectsAtLocation(placement: Placement, locationId: LocationId): WorldObjectId[] {

@@ -460,7 +460,7 @@ notebook" flow's messaging) goes through the translation table.
   a `NotebookProduct` content type (`engine/types.ts`), validated/loaded by
   `cityLoader.ts` exactly like `Pass` (`world.yaml`'s `notebookProducts:`
   list) — `id`/`nameKey`/`aliases`/`priceMinor` plus `pageCount`/
-  `charCapacity`, which seed a freshly-bought `Notebook`'s blank pages. `GameEngine.buyNotebook` mirrors `buyPass`: alias-match,
+  `charCapacity`, which seed a freshly-bought `Notebook`'s blank pages. `GameEngine.buyNotebook` alias-matches,
   charge, create. A bought notebook starts with `name: ""` (unnamed) —
   `GameEngine` never produces player-facing display text to default it to,
   so naming it is left to `renameNotebook`, which the `buy`-menu flow (or

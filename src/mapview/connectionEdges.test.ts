@@ -10,7 +10,7 @@ const nameOf = (id: string) => id.toUpperCase();
 
 describe("buildConnectionEdges", () => {
   it("groups a one-way Connection into a single edge with one forward arrow", () => {
-    const groups = buildConnectionEdges([loc("a", [{ toId: "b", distanceKm: 1, modes: ["foot"] }]), loc("b", [])], nameOf);
+    const groups = buildConnectionEdges([loc("a", [{ toId: "b" }]), loc("b", [])], nameOf);
 
     expect(groups).toHaveLength(1);
     expect(groups[0]!.edge.arrows).toEqual(["forward"]);
@@ -18,52 +18,43 @@ describe("buildConnectionEdges", () => {
   });
 
   it("groups a two-way pair into one edge with both arrows", () => {
-    const groups = buildConnectionEdges(
-      [loc("a", [{ toId: "b", distanceKm: 1, modes: ["foot"] }]), loc("b", [{ toId: "a", distanceKm: 1, modes: ["foot"] }])],
-      nameOf,
-    );
+    const groups = buildConnectionEdges([loc("a", [{ toId: "b" }]), loc("b", [{ toId: "a" }])], nameOf);
 
     expect(groups).toHaveLength(1);
     expect(groups[0]!.edge.arrows).toEqual(["forward", "backward"]);
     expect(groups[0]!.entries).toHaveLength(2);
   });
 
-  it("merges multiple same-pair Connections (different modes) into one edge, not one per Connection", () => {
-    const groups = buildConnectionEdges(
-      [
-        loc("a", [
-          { toId: "b", distanceKm: 1, modes: ["foot"] },
-          { toId: "b", distanceKm: 1, modes: ["taxi"] },
-        ]),
-        loc("b", []),
-      ],
-      nameOf,
-    );
+  it("merges multiple same-pair Connections into one edge, not one per Connection", () => {
+    const groups = buildConnectionEdges([loc("a", [{ toId: "b" }, { toId: "b", compassLabel: "up" }]), loc("b", [])], nameOf);
 
     expect(groups).toHaveLength(1);
     expect(groups[0]!.entries).toHaveLength(2);
   });
 
-  it("shows a single un-split tooltip when both directions offer the same modes", () => {
+  it("has no tooltip when nothing carries a compass label", () => {
+    const groups = buildConnectionEdges([loc("a", [{ toId: "b" }]), loc("b", [{ toId: "a" }])], nameOf);
+    expect(groups[0]!.edge.tooltip).toBeUndefined();
+  });
+
+  it("shows a single un-split tooltip when both directions carry the same label", () => {
     const groups = buildConnectionEdges(
-      [loc("a", [{ toId: "b", distanceKm: 1, modes: ["foot"] }]), loc("b", [{ toId: "a", distanceKm: 1, modes: ["foot"] }])],
+      [loc("a", [{ toId: "b", compassLabel: "north" }]), loc("b", [{ toId: "a", compassLabel: "north" }])],
       nameOf,
     );
-
-    expect(groups[0]!.edge.tooltip).toBe("foot");
+    expect(groups[0]!.edge.tooltip).toBe("north");
   });
 
   it("splits the tooltip by direction when the two directions differ", () => {
     const groups = buildConnectionEdges(
-      [loc("a", [{ toId: "b", distanceKm: 1, modes: ["foot", "taxi"] }]), loc("b", [{ toId: "a", distanceKm: 1, modes: ["foot"] }])],
+      [loc("a", [{ toId: "b", compassLabel: "north" }]), loc("b", [{ toId: "a", compassLabel: "south" }])],
       nameOf,
     );
-
-    expect(groups[0]!.edge.tooltip).toBe("A → B: foot/taxi\nB → A: foot");
+    expect(groups[0]!.edge.tooltip).toBe("A → B: north\nB → A: south");
   });
 
   it("skips a Connection whose destination isn't in the given location list", () => {
-    const groups = buildConnectionEdges([loc("a", [{ toId: "ghost", distanceKm: 1, modes: ["foot"] }])], nameOf);
+    const groups = buildConnectionEdges([loc("a", [{ toId: "ghost" }])], nameOf);
     expect(groups).toHaveLength(0);
   });
 });

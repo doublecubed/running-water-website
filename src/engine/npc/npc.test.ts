@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createInitialState } from "../../content/world";
 import { GameEngine } from "../GameEngine";
-import { SAVE_SCHEMA_VERSION, buildStateFromSave, serializeState } from "../save/save";
 import type { Condition, GameState, Npc, NpcLabel } from "../types";
 import { compare, evaluateCondition } from "./conditions";
 import { MAX_MEMORIES_PER_NPC, addMemory, memoryMatches, parseMemoryShorthand, witnessObservation } from "./memory";
@@ -181,28 +180,5 @@ describe("schedules", () => {
     expect(syncNpcLocations(state)).toEqual([]);
     a.schedule = [{ fromHour: 0, toHour: 24, locationId: target, weekdays: [3] }];
     expect(syncNpcLocations(state)).toEqual([a.id]);
-  });
-});
-
-describe("save round-trip", () => {
-  it("persists npcStates and reputation and is at the current schema", () => {
-    const state = createInitialState();
-    const npcId = Object.keys(state.npcs)[0] ?? "someone";
-    adjustTrust(state, npcId, 4);
-    adjustReputation(state, "global", 2);
-    const save = serializeState(state);
-    expect(save.schemaVersion).toBe(SAVE_SCHEMA_VERSION);
-    const rebuilt = buildStateFromSave(createInitialState(), JSON.parse(JSON.stringify(save)));
-    expect(rebuilt.npcStates[npcId]?.trust).toBe(4);
-    expect(rebuilt.reputation.global).toBe(2);
-  });
-  it("migrates a schema-10 save with empty NPC state", () => {
-    const state = createInitialState();
-    const v10 = { ...serializeState(state), schemaVersion: 10 } as Record<string, unknown>;
-    delete v10.npcStates;
-    delete v10.reputation;
-    const rebuilt = buildStateFromSave(createInitialState(), v10 as never);
-    expect(rebuilt.npcStates).toEqual({});
-    expect(rebuilt.reputation).toEqual({ global: 0, byLabel: {} });
   });
 });

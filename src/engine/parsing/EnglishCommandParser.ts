@@ -1,4 +1,3 @@
-import type { TravelCategory } from "../types";
 import type { Command, PanelContentId, PanelSlot } from "./Command";
 import type { ICommandParser, VerbHelp } from "./ICommandParser";
 
@@ -25,24 +24,6 @@ const DIRECTION_ALIASES: Record<string, string> = {
   inside: "in",
   out: "out",
   outside: "out",
-};
-
-/**
- * Normalizes typed preference words to a canonical TravelCategory — the
- * natural foot/transit/taxi choice, not an abstract fastest/cheapest goal
- * (see TravelCategory's doc comment in types.ts). "fastest"/"cheapest"
- * are deliberately NOT accepted here: they're inquiry-time labels a
- * category can earn, not a standing preference of their own.
- */
-const PREFERENCE_ALIASES: Record<string, TravelCategory> = {
-  foot: "foot",
-  walk: "foot",
-  walking: "foot",
-  transit: "transit",
-  bus: "transit",
-  public: "transit",
-  taxi: "taxi",
-  cab: "taxi",
 };
 
 /** First-word aliases for `PanelSlot`, used by the `panel <slot> <content>` command. */
@@ -166,8 +147,8 @@ const VERB_RULES: VerbRule[] = [
       if (verb === "go" || verb === "travel") {
         const query = rest.filter((w) => w !== "to").join(" ");
         if (query) return { kind: "travel", query };
-        // Bare "go" stays unknown (no meaningful "go menu"); bare "travel" opens the direct-connections menu.
-        return verb === "travel" ? { kind: "travelMenu" } : { kind: "unknown", raw };
+        // Bare "go"/"travel" with no destination is unknown.
+        return { kind: "unknown", raw };
       }
       const direction = DIRECTION_ALIASES[verb];
       return direction ? { kind: "travel", query: direction } : { kind: "unknown", raw };
@@ -232,15 +213,6 @@ const VERB_RULES: VerbRule[] = [
     build: () => ({ kind: "toggleStealth" }),
   },
   {
-    words: ["prefer", "preference"],
-    usageKey: "verb.prefer.usage",
-    build: ({ rest, raw }) => {
-      if (rest.length === 0) return { kind: "travelPreference" };
-      const preference = PREFERENCE_ALIASES[rest[0]!];
-      return preference ? { kind: "travelPreference", preference } : { kind: "unknown", raw };
-    },
-  },
-  {
     words: ["notebook", "notebooks"],
     usageKey: "verb.notebook.usage",
     build: () => ({ kind: "notebook" }),
@@ -267,16 +239,6 @@ const VERB_RULES: VerbRule[] = [
       const text = words.join(" ");
       return text ? { kind: "jotDown", text } : { kind: "jotDownPick" };
     },
-  },
-  {
-    words: ["save"],
-    usageKey: "verb.save.usage",
-    build: () => ({ kind: "save" }),
-  },
-  {
-    words: ["load"],
-    usageKey: "verb.load.usage",
-    build: () => ({ kind: "load" }),
   },
   {
     words: ["devmoney"],

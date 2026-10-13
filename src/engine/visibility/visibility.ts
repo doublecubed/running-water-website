@@ -18,8 +18,7 @@ import type { Location, VisibilityTier } from "../types";
 /**
  * Canonical numeric value for each named tier, defined once so content
  * authors pick a small, intuitable tier rather than hand-typing an
- * arbitrary 0-100 number — same reasoning as
- * `engine/navigation/transportModes.ts`'s TRANSPORT_MODE_SPEED_KMH. These
+ * arbitrary 0-100 number. These
  * are the values before time-of-day is applied.
  */
 export const VISIBILITY_TIER_VALUES: Record<VisibilityTier, number> = {

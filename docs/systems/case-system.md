@@ -114,7 +114,7 @@ alias (`EnglishCommandParser.ts`'s `PANEL_CONTENT_ALIASES`).
 
 `SaveData` gained `playerFacts`; `SAVE_SCHEMA_VERSION` bumped 11 → 12. A
 pre-existing save backfills `playerFacts: {}` — nobody had learned anything
-before this system existed. See `docs/systems/save.md`.
+before this system existed. See the (removed) save system.
 
 ## How it interacts with other systems
 
@@ -126,7 +126,7 @@ before this system existed. See `docs/systems/save.md`.
   `Condition`/`DialogueEffect` machinery, after `dialogueRules` and
   `topics`. `playerFacts` is the player-side counterpart to
   `NpcState.knowledge` — the two never overwrite each other.
-- **Save** (`docs/systems/save.md`): schema version 11 → 12.
+- **Save** (system since removed; historical note): schema version 11 → 12.
 - **Content schema** (`docs/content-schema.md`): `facts:` top-level YAML
   list; `learnFact`/`playerKnows` in the effect/condition tables.
 

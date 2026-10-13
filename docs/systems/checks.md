@@ -158,7 +158,7 @@ mirroring `visibility.tier.<tier>`/`event.locationVisibility`'s exact
 precedent.
 
 Both fields are in the saved/mutable slice — added in
-`SAVE_SCHEMA_VERSION` 9 (see `docs/systems/save.md`).
+`SAVE_SCHEMA_VERSION` 9 (see the (removed) save system).
 
 ## How it interacts with other systems
 
@@ -172,7 +172,7 @@ Both fields are in the saved/mutable slice — added in
   `toggleStealth` are both listed in the public capabilities table; the
   constructor's `rng` parameter is the first randomness the engine has
   ever needed.
-- **Save** (`docs/systems/save.md`): `Player.stealthMode`/`concealment`
+- **Save** (system since removed; historical note): `Player.stealthMode`/`concealment`
   are why `SAVE_SCHEMA_VERSION` bumped from 8 to 9.
 
 ## Known gaps

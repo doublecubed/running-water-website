@@ -1,7 +1,7 @@
 /**
  * English translation table for UI chrome and engine-emitted event text —
  * the strings that change with engine/view code, not with city content.
- * World content text (location/item/NPC/transit-line/pass names and
+ * World content text (location/item/NPC names and
  * descriptions) lives separately in `src/i18n/content/en.yaml`, loaded by
  * `contentLocale.ts` and merged into this table by `resolver.ts`, so it can
  * be authored as data (edited by hand or by the map editor) the same way
@@ -34,14 +34,7 @@ export const en: Record<string, string> = {
   // fixed day/month/year ORDER hardcoded in the view) is what lets a
   // different language pick its own date ordering later.
   "ui.clockDisplay": "D MMMM YYYY · HH:mm",
-  "ui.moneyDisplay": "{sign}${major}.{minor}",
   "ui.locationDisplay": "{locationKey}",
-  "ui.cannotAfford": " — can't afford it (you have {balanceSign}${balanceMajor}.{balanceMinor})",
-  "ui.preferredOption": " (preferred)",
-  "ui.fastestOption": "(fastest) ",
-  "ui.cheapestOption": "(cheapest) ",
-  "ui.pickCustomDestination": "Pick a custom destination",
-  "ui.goBackToDirectConnections": "Go back to direct connections",
   // Disambiguation menu (see docs/systems/parts.md's "Ambiguous targets") —
   // {itemKey} is the shared name every candidate has in common, {locationKey}
   // distinguishes them (a container's own nameKey, "ui.inventoryLabel", or
@@ -56,7 +49,6 @@ export const en: Record<string, string> = {
 
   // Generalized buy menu (view/menu/buyMenu.ts) — see docs/systems/notebooks.md's "Economy integration" decision.
   "ui.buyNotebookOption": "{productKey} — {priceSign}${priceMajor}.{priceMinor}",
-  "ui.buyPassOption": "{passKey} — {priceSign}${priceMajor}.{priceMinor}",
 
   // NPC topic menu (view/menu/npcMenus.ts) — see docs/systems/dialogue.md's "Topic menus" section.
   "ui.leaveConversationOption": "Leave it there",
@@ -85,7 +77,7 @@ export const en: Record<string, string> = {
   // Engine events
   "event.playerMoved": "You head {direction}.",
   "event.moveBlocked": "You can't go {direction} from here.",
-  "event.playerTraveled": "You travel to {locationKey}, arriving after {minutes} minutes.",
+  "event.playerTraveled": "You go to {locationKey}.",
   "event.alreadyThere": "You're already at {locationKey}.",
   "event.routeNotFound": "There's no way to reach {locationKey} from here.",
   "event.locationNotFound": 'You don\'t know how to get to "{query}" from here.',
@@ -133,31 +125,8 @@ export const en: Record<string, string> = {
   "concealment.tier.succeeded": "You're reasonably concealed.",
   "concealment.tier.succeededWell": "You're well hidden.",
   "concealment.tier.succeededSpectacularly": "You're completely unseen — perfectly concealed.",
-  "event.travelPreferenceSet": "You'll travel by the {preferenceKey} option from now on.",
-  "event.travelPreferenceChecked": "You're currently traveling by the {preferenceKey} option.",
-  "event.inquiryHeader": "Ways to reach {locationKey}:",
-  "event.footRouteNotFullyWalkable":
-    "Getting there entirely on foot isn't possible — showing the cheapest route that walks where it can.",
-  "event.routeOptionByMode": "{modeKey}: {minutes} min, {costSign}${costMajor}.{costMinor}{afford}",
-  // Used by GameEngine.categoryChoice — the natural foot/transit/taxi
-  // options a named-destination inquiry offers. {fastestNote}/
-  // {cheapestNote} are prefix badges (resolve to "" when not earned) so
-  // "(fastest)"/"(cheapest)" appear at the START of the line, per
-  // docs/systems/economy.md; {preferredNote} stays a trailing suffix.
-  "event.routeOptionByCategory": "{fastestNote}{cheapestNote}{categoryKey}: {minutes} min, {costSign}${costMajor}.{costMinor}, {hops} hop(s) ({modesKey}){afford}{preferredNote}",
-  // Kept for a future "navigator device" (see TravelStrategy in types.ts)
-  // — not emitted by any code path today.
-  "event.routeOptionByStrategy": "{strategyKey}: {minutes} min, {costSign}${costMajor}.{costMinor}, {hops} hop(s) ({modesKey}){afford}{preferredNote}",
-  "event.directConnectionsHeader": "Here are the locations you can travel directly from here:",
-  "event.directConnectionsIntro": "These use your preferred method ({preferenceKey}). Ask about a place by name to see other options.",
-  "event.directConnectionOption": "{locationKey}: {minutes} min, {costSign}${costMajor}.{costMinor} ({modeKey}){afford}",
-  "event.askDestinationPrompt": "Where do you want to inquire about?",
   "event.menuCancelled": "You decided not to go anywhere for now.",
   "event.menuInvalidChoice": 'That\'s not one of the options — pick a number, or type "back"/"exit".',
-  "event.passNotFound": 'There\'s no pass called "{query}" for sale.',
-  // Always shown as an expiry DATE (never a countdown/duration) — see
-  // docs/systems/economy.md's pass system and GameEngine.buyPass.
-  "event.passPurchased": "You buy the {passKey}. Expires: {day} {monthKey} {year}.",
   // Notebooks — see docs/systems/notebooks.md.
   "event.notebookProductNotFound": 'There\'s no notebook called "{query}" for sale.',
   "event.notebookPurchased": "You buy a {productKey}.",
@@ -190,10 +159,6 @@ export const en: Record<string, string> = {
   "event.renameNotebookPrompt": "What would you like to call it?",
   "event.disposeNotebookConfirm": 'Really get rid of "{name}"?{activeNote}',
   "event.notebookOpened": 'You flip open "{name}".',
-  "event.gameSaved": "Game saved.",
-  "event.gameLoaded": "Game loaded.",
-  "event.noSaveFound": "There's no saved game to load.",
-  "event.saveIncompatible": "That save can't be loaded — it's from an incompatible version of the game.",
 
   // Case board — see docs/systems/case-board.md.
   "event.boardNodeAdded": "You pin that to the board.",
@@ -220,29 +185,11 @@ export const en: Record<string, string> = {
   "ui.boardNoAddableEntities": "Nothing to add here yet.",
   "ui.boardBack": "‹ Back",
 
-  // Natural travel category names — resolved recursively through
-  // {preferenceKey}/{categoryKey} params (see resolver.ts). These are the
-  // player-facing default (see TravelCategory in types.ts).
-  "preference.foot": "foot",
-  "preference.transit": "public transport",
-  "preference.taxi": "taxi",
-  // Legacy mixed-mode strategy labels — kept for a future "navigator
-  // device" (see TravelStrategy in types.ts); not used by any current UI.
-  "preference.fastest": "fastest",
-  "preference.cheapest": "cheapest",
-
-  // Transport mode display names — resolved recursively through {modeKey} params.
-  "mode.foot.name": "on foot",
-  "mode.car.name": "by car",
-  "mode.taxi.name": "by taxi",
-  "mode.bus.name": "by bus",
-  "mode.ship.name": "by ship",
-
   // Calendar names — consumed by formatCalendarDate (src/i18n/calendarFormat.ts)
   // for MMMM/MMM/dddd/ddd tokens, and (via the dynamically-built
   // monthKey/weekdayKey params — see calendarDisplayParams in
   // engine/time/calendar.ts) by GameEngine event text like
-  // event.timeChecked/event.passPurchased. This IS the only date/time
+  // event.timeChecked. This IS the only date/time
   // format the game shows — see docs/systems/time.md for why an earlier
   // relative "Day N" format was dropped entirely.
   "calendar.month.1.long": "January",
@@ -292,22 +239,19 @@ export const en: Record<string, string> = {
   "verb.locations.usage": "locations (map)",
   "verb.worldmap.usage": "worldmap — visual city map, click a discovered location to travel there",
   "verb.panel.usage": "panel <left/right> [verbs/locations/inventory/facts/close] — choose what a side panel shows; leave off the content to pick from a menu",
-  "verb.travel.usage": "go <place> (travel, n, s, e, w, up, down) — or bare \"travel\" for a menu of nearby destinations",
+  "verb.travel.usage": "go <place> (travel, n, s, e, w, up, down)",
   "verb.take.usage": "take <item> (get, pick up)",
-  "verb.buy.usage": "buy <pass or notebook> (purchase) — or bare \"buy\" for a menu of what's for sale",
+  "verb.buy.usage": "buy <notebook> (purchase) — or bare \"buy\" for a menu of what's for sale",
   "verb.talk.usage": "talk to <npc> (ask, speak)",
   "verb.examine.usage": "examine <thing> (x, inspect)",
   "verb.interact.usage": "open/close <part> (shut) — needs a closer look first (examine it, or it's already in view)",
   "verb.unfocus.usage": "back (stop) — stop examining the currently focused thing",
   "verb.time.usage": "time (clock)",
-  "verb.prefer.usage": "prefer <foot|transit|taxi> (preference)",
   "verb.sneak.usage": "sneak — toggle stealth mode",
   "verb.notebook.usage": "notebook (notebooks) — open your notebook(s)",
   "verb.board.usage": "board (corkboard) — open your case board",
   "verb.jotDown.usage":
     'jot down <text> (jotdown) — write a note in your active notebook; "jot down last" jots whatever was just printed; bare "jot down" lets you click a line in the log to jot it',
-  "verb.save.usage": "save — saves your game",
-  "verb.load.usage": "load — loads your last saved game",
   "verb.devMoney.usage": "devmoney <amount> — dev only, credits/debits the player directly",
   "verb.devLocations.usage": "devlocations — dev only, toggles the locations panel between discovered and all",
 };

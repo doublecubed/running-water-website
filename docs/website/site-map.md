@@ -55,14 +55,26 @@ system later (news and hints in character).
 
 ## Clock
 
-The status bar shows the current room name at its right end (the money display was removed from the page; the engine still tracks money) and the visitor's real local date and time, ticking in real
-time. `GameEngine` takes `{ externalClock: true }` (travel no longer advances
-time); `TerminalView.startWallClock()` feeds `GameEngine.syncClock(minutes)` from
-`view/wallClock.ts` every 15 s. The engine never reads `Date`.
+The status bar shows the current room name at its right end (the money display
+was removed from the page; the engine still tracks money) and the visitor's real
+local date and time, ticking in real time. `TerminalView.startWallClock()` feeds
+`GameEngine.syncClock(minutes)` from `view/wallClock.ts` every 15 s; the engine
+never reads `Date` and no action advances its clock (travel takes no time).
+
+## Travel
+
+Moving between rooms is free and instant: no distance, transport modes, fares,
+transit lines or passes (all removed 2026-10-13), and there is no save/load.
+`Connection` is just `{ toId, compassLabel?, curve? }`. A named destination far
+away (`go to archive`, or a locations-panel click) walks the shortest path in one
+step (`findPath`, breadth-first). Compass words (`n`, `s`, `up`, ...) still work on
+any connection that carries a `compassLabel`; the studio's don't yet. See
+`../systems/navigation.md`.
 
 ## Not done / open
 
-- ~80 tests in `GameEngine.test.ts` and other sample-based suites still fail.
-- Editors, case board, money/fare UI and save/load are not cut yet.
+- Editors, case board and the "city" leftovers (stealth, stats, schedules, NPC
+  labels) are not cut yet. Money, `buy` and notebooks stay on purpose (notebooks
+  will carry blog posts and notes).
 - Cabinet is a plain locked-looking setpiece; opening it is unbuilt.
 - Mailing-list signup needs an external link; press kit needs a plain link.

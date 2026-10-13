@@ -9,7 +9,7 @@ describe("locations panel links", () => {
   it("clicking a visited location runs a go-to command and moves the player", async () => {
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+    const engine = new GameEngine(createInitialState(), Math.random);
     const view = new TerminalView(root, engine, new EnglishCommandParser(false), 0);
     void view;
 
@@ -32,7 +32,7 @@ describe("verbs panel", () => {
   it("lists the five starter verbs and survives a re-render", async () => {
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+    const engine = new GameEngine(createInitialState(), Math.random);
     new TerminalView(root, engine, new EnglishCommandParser(false), 0);
     const items = () => Array.from(root.querySelectorAll('[data-role="panel-verbs"] li')).map((li) => li.textContent);
     const expected = ["go to <place>", "examine <thing>", "talk to <someone>", "open <thing>", "close <thing>"];

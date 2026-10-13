@@ -21,20 +21,11 @@ Two files:
   even though it lives under `src/view/` (it owns interaction-mode state,
   which is a view concern per CLAUDE.md's engine/view boundary —
   `GameState` never has a "current menu").
-- **`travelMenus.ts`** — the first domain built on top of it:
-  `buildDirectConnectionsScreen(engine)` is the screen behind bare
-  `travel`, plus two private screen-builders for the "ask about
-  somewhere else" sub-flow. This file is where `GameEngine` calls
-  (`listDirectConnections`, `inquireTravel`, `travelToConnection`,
-  `travelTo`) get turned into `MenuOption`/`MenuScreen` objects — the
-  engine itself returns plain `ActionResult`s and knows nothing about
-  screens or menus.
-- **`disambiguationMenus.ts`** — the second domain, proving the
+- **`disambiguationMenus.ts`** — the first domain, proving the
   abstraction generalizes: `buildDisambiguationScreen(header, choices,
   resolve)` turns a `ResolutionChoice[]` (an ambiguous `examine`/
   `takeItem` target — see `docs/systems/parts.md`'s "Ambiguous targets")
-  into a one-shot choices screen. Unlike `travelMenus.ts`, it's
-  verb-agnostic — the caller (`TerminalView`'s `WORLD_OBJECT_RESOLVERS`
+  into a one-shot choices screen. It's verb-agnostic — the caller (`TerminalView`'s `WORLD_OBJECT_RESOLVERS`
   table) supplies `resolve`, so this file has no idea whether it's
   backing `examine` or `takeItem`, only that picking an option should
   call `resolve(id)` and exit.
@@ -59,62 +50,25 @@ Two files:
   same case, predating the board. `MenuFlow` is for choices reachable
   from the plain terminal view, not from inside another overlay.
 
-## Why this replaced Stage 4's `PendingChoice`
+## Clicking an option
 
-Stage 4 (see `docs/systems/economy.md`) built a narrower mechanism:
-`ActionResult.choices`, remembered by `TerminalView` for exactly one
-following input. That worked for a single flat list, but the travel-menu
-flow needs to persist across several turns and mix two input modes
-(numeric selection vs. free-text destination entry) — `PendingChoice`'s
-"exactly one more input" assumption doesn't hold. Rather than build a
-second, travel-only mechanism for this, `MenuFlow` generalizes and
-subsumes it: the old `inquire` command's one-shot behavior is now just a
-particular path through this same flow (see below), so there is exactly
-one interaction mechanism in the codebase, not two. `ActionResult.choices`
-itself is unchanged and still exists — `travelMenus.ts` is simply where
-it now gets consumed, instead of `TerminalView` doing it directly.
+Every choices screen renders its options as `button.terminal__menu-option`
+elements (`TerminalView.renderMenuScreen`). A click is exactly the player
+typing the option's number: a delegated listener on the log (`handleLogClick`)
+calls `runInput(String(n))`. Buttons of any menu block that is no longer the
+live screen are disabled (`retireStaleMenus`) so a stale click can't index into
+a different screen. Hover/focus show an inverse-video row highlight
+(`terminal.css`). View-only; the menu logic is unchanged.
 
-## The `travel` menu flow
+## The travel menu is gone
 
-```
-bare "travel"
-  → buildDirectConnectionsScreen: "Pick a custom destination" FIRST
-    (always position 1, regardless of how many connections follow —
-    deliberate, so the player can rely on muscle memory rather than
-    reading the list each time to find it), then one option per direct
-    connection (immediate travel via travelToConnection — no further
-    mode breakdown)
-      → free-text prompt: "Where do you want to inquire about?"
-        → submit calls engine.inquireTravel(input)
-          → no choices (not found / already there / blocked):
-            print the failure and exit
-          → choices exist: detailed foot/transit/taxi (or per-mode, for a
-            compass answer) breakdown, preferred category listed first
-            and annotated, fastest/cheapest labeled as earned (see
-            docs/systems/economy.md), plus
-            "Go back to direct connections" (→ restart at a FRESH root
-            screen, not just pop one level — see MenuOutcome's doc
-            comment on why `restart` exists separately from `back`)
-```
-
-`exit`/`cancel` and `back` are universal keywords, intercepted by
-`TerminalView.handleMenuInput` before reaching the current screen's own
-options — they work from any screen, not just ones that happen to list
-them as a numbered item. `back` past the root screen behaves like `exit`.
-
-`travel to <place>` (with an explicit destination) is unaffected by any
-of this — it still executes immediately via `travelTo`, same as before.
-Only bare `travel` opens the menu.
-
-## Why "inquire" was retired as a standalone verb
-
-`inquire` is deliberately NOT a command anymore — see
-`docs/systems/parsing.md`. It's too general a word to keep permanently
-bound to travel in a detective game that will eventually want it (or
-something like it) for interrogation/investigation. `GameEngine.inquireTravel`
-still exists and is still exercised — just only reachable through the
-`travel` menu's "Pick a custom destination" prompt now, not as its own
-top-level verb.
+The bare-`travel` menu (`view/menu/travelMenus.ts`, direct connections plus a
+free-text "inquire" prompt with foot/transit/taxi breakdowns) was removed with
+the fare and transport-mode system. `travel` and `go` now always need a
+destination. `ActionResult.choices` survives only for disambiguation
+(`ResolutionChoice`). `exit`/`cancel` and `back` stay universal keywords,
+intercepted by `TerminalView.handleMenuInput` before reaching a screen's own
+options; `back` past the root screen behaves like `exit`.
 
 ## The tint
 
@@ -122,13 +76,13 @@ top-level verb.
 options) in one `<div class="terminal__menu" data-menu-kind="...">`
 block, rather than printing each line loose — see `terminal.css`. The
 tint is keyed off `data-menu-kind`, a plain string tag on `MenuScreen`
-(`travelMenus.ts`'s `MENU_KIND = "travel"`) that `MenuFlow` itself never
+(e.g. `buyMenu.ts`'s `MENU_KIND = "buy"`) that `MenuFlow` itself never
 inspects — purely cosmetic. A future menu domain (dialogue, say) sets its
 own `menuKind` and gets its own CSS rule; no change to menu logic.
 
 ## Known gaps
 
-- Several domains now exist (`travel`, `disambiguation`, `buy`,
+- Several domains now exist (`disambiguation`, `buy`,
   `notebook`, NPC topics, `panel`) — none needed a change to
   `MenuFlow`/`MenuOutcome`/`MenuScreen` itself, just their own
   screen-builder file, which is a real confirmation the abstraction

@@ -135,7 +135,7 @@ future case system should reuse fact ids as clue ids.
   interface (and may add an "in transit" state) without touching callers.
 - No schedule, or no matching slot → `null` → the NPC stays put.
 - `syncNpcLocations(state)` writes results into `placement.npcLocationId`. It
-  runs from `GameEngine.advanceClock`, the only clock mutator — so still no
+  runs from `GameEngine.syncClock`, the only clock mutator — so still no
   tick loop. Placement stays the single stored truth (saves and every existing
   reader unchanged). Accepted cost: a big clock jump teleports an NPC to
   wherever their schedule says NOW, with no intermediate movement.
@@ -160,7 +160,7 @@ non-empty OR a `when`.
 
 ## How it interacts with other systems
 
-- **Time**: `advanceClock` → `syncNpcLocations`. Scheduled NPCs move only when
+- **Time**: `syncClock` → `syncNpcLocations`. Scheduled NPCs move only when
   time moves (travel is still the only source of elapsed time).
 - **Stealth/Checks/Visibility**: `Player.stealthMode`/`concealment` decide who
   witnesses the player.

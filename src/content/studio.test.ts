@@ -5,13 +5,13 @@ import { createInitialState } from "./world";
 /** Walks the website's first-slice flow headlessly: landing -> herald -> main room -> examine -> back. */
 describe("studio first slice", () => {
   it("starts at the landing, where the herald greets the visitor", () => {
-    const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+    const engine = new GameEngine(createInitialState(), Math.random);
     expect(engine.getState().player.locationId).toBe("studio-landing");
     expect(engine.talkTo("herald").ok).toBe(true);
   });
 
   it("walks to the main room by name and examines an object", () => {
-    const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+    const engine = new GameEngine(createInitialState(), Math.random);
     expect(engine.travelTo("main room").ok).toBe(true);
     expect(engine.getState().player.locationId).toBe("studio-mainroom");
     expect(engine.examine("whiteboard").ok).toBe(true);
@@ -19,7 +19,7 @@ describe("studio first slice", () => {
   });
 
   it("pathfinds across rooms: archive is reachable from the main room via the break room", () => {
-    const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+    const engine = new GameEngine(createInitialState(), Math.random);
     expect(engine.travelTo("archive").ok).toBe(true);
     expect(engine.getState().player.locationId).toBe("studio-archive");
   });
@@ -27,7 +27,7 @@ describe("studio first slice", () => {
 
 describe("studio room structure", () => {
   it("leads from the landing to the corridor, with the main room off the corridor", () => {
-    const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+    const engine = new GameEngine(createInitialState(), Math.random);
     const landing = engine.getState().locations["studio-landing"]!;
     expect(landing.connections.map((c) => c.toId)).toEqual(["studio-corridor"]);
     expect(engine.travelTo("corridor").ok).toBe(true);
@@ -36,7 +36,7 @@ describe("studio room structure", () => {
   });
 
   it("routes the main room's exits through the corridor", () => {
-    const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+    const engine = new GameEngine(createInitialState(), Math.random);
     engine.travelTo("main room");
     // Press room is not directly connected to the main room: the path goes via the corridor.
     expect(engine.travelTo("press room").ok).toBe(true);

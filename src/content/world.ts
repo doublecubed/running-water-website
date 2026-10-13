@@ -6,7 +6,7 @@ import type { CityContent } from "./cityLoader";
 import { parseCity } from "./cityLoader";
 
 /**
- * City content (locations, items, NPCs, transit lines, passes) lives
+ * City content (locations, items, NPCs) lives
  * across many files under `content/city/` — see `cityLoader.ts`'s doc
  * comment for the file layout and `docs/content-schema.md` for the
  * format. This file is left owning only game SETUP: which location the
@@ -46,14 +46,11 @@ if (!city.locations[STARTING_LOCATION_ID]) {
 
 /**
  * Returns a fresh, independent clone of the STATIC/catalog content
- * (`locations`/`worldObjects`/`npcs`/`transitLines`/`passes`) plus this
- * city's `initialPlacement`/`initialPartStates` — everything a new game
- * or a save-file load needs to rebuild the non-mutable half of
- * `GameState` from. Parsing itself only happens once, at module load
- * (above); this just clones that result, so repeated calls (a fresh
- * game, then later a save load) never alias the same objects. See
- * docs/systems/save.md for how this pairs with the saved mutable slice
- * (`player`/`clock`/`placement`) to reconstruct a full `GameState`.
+ * (`locations`/`worldObjects`/`npcs`) plus this city's
+ * `initialPlacement`/`initialPartStates` — everything a new game needs to
+ * build the non-mutable half of `GameState` from. Parsing itself only happens
+ * once, at module load (above); this just clones that result, so repeated
+ * calls never alias the same objects.
  */
 export function loadCityContent(): CityContent {
   return structuredClone(city);
@@ -71,8 +68,6 @@ export function createInitialState(options: { epoch?: CalendarEpoch } = {}): Gam
     worldObjects: content.worldObjects,
     npcs: content.npcs,
     labels: content.labels,
-    transitLines: content.transitLines,
-    passes: content.passes,
     notebookProducts: content.notebookProducts,
     facts: content.facts,
     placement: content.initialPlacement,
@@ -90,20 +85,16 @@ export function createInitialState(options: { epoch?: CalendarEpoch } = {}): Gam
     playerFacts: {},
     // A new game starts with an empty case board — see docs/systems/case-board.md.
     board: { nodes: [], connections: [] },
-    // 15000 minor units = $150.00 starting cash — enough to comfortably
-    // afford everyday taxi/bus fares and still feel the $10.00 ship fare to
-    // the pier as a real cost, not enough to make affordability moot. See
+    // 15000 minor units = $150.00 starting cash. Travel is free on the
+    // website; money only matters for `buy` (e.g. a notebook). See
     // docs/systems/economy.md.
     player: {
       locationId: STARTING_LOCATION_ID,
       inventory: [],
       money: 15000,
-      boardedLineId: null,
-      travelPreference: "foot",
       // The starting location counts as already visited — see
       // Player.visitedLocationIds and docs/systems/navigation.md.
       visitedLocationIds: [STARTING_LOCATION_ID],
-      activePasses: [],
       stats: {},
       stealthMode: false,
     },

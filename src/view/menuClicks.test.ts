@@ -9,7 +9,7 @@ const tick = () => new Promise((r) => setTimeout(r, 0));
 function setup() {
   const root = document.createElement("div");
   document.body.appendChild(root);
-  const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+  const engine = new GameEngine(createInitialState(), Math.random);
   const view = new TerminalView(root, engine, new EnglishCommandParser(false), 0);
   const type = async (text: string) => {
     const input = root.querySelector<HTMLInputElement>('[data-role="input"]')!;

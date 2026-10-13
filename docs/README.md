@@ -4,6 +4,12 @@ This folder is the source of truth for how Text Detective's systems work and
 how they interact. See the project root `CLAUDE.md` for architecture
 decisions and the documentation policy that governs this folder.
 
+> **Status (2026-10-13): this repo is now the Underwater Games website.** Travel
+> time, transport modes, fares, transit lines, passes, the travel menu and the
+> save/load system were removed (see `systems/navigation.md`, `systems/economy.md`,
+> `website/site-map.md`). Older entries below that describe them are historical
+> and kept for context; the system docs under `systems/` are current.
+
 ## Contents
 
 - `context.md` — short handoff note: what the most recent working session
@@ -13,34 +19,18 @@ decisions and the documentation policy that governs this folder.
   action table; what's still missing (dynamic NPC state like mood/
   suspicion/knowledge beyond the flag-gated lines in `systems/
   dialogue.md`, case/deduction system, event log)
-- `systems/navigation.md` — the Location graph, Connections, transport
-  modes, Dijkstra pathfinding, the compass-vs-named-destination resolution
-  split, and interior/exterior locations (multi-story buildings, `in`/`out`
-  directions, the flat free interior-travel rate)
-- `systems/time.md` — the simulated clock: a single absolute real-world
-  calendar date (the ONLY time format shown — an earlier relative "Day N"
-  display was dropped entirely, see the doc for why), `formatCalendarDate`'s
-  token-based date formatting, and the general "absolute expiry minute,
-  compared lazily" pattern for any time-sensitive/countdown state
-- `systems/economy.md` — player money (integer minor units), why it's a
-  Player scalar rather than an inventory item, the engine/i18n formatting
-  split, the full paid-transportation arc (cost model → preference →
-  inquire → selection → charging → guided menu → natural travel
-  categories), and a purchasable multi-day transit pass system — feature-
-  complete; only vehicle ownership and cross-trip transit-line
-  persistence remain unbuilt
+- `systems/navigation.md` — the Location graph, `Connection`s (`toId` + optional compass label), free instant travel, the compass-vs-named-destination split, and shortest-hop pathfinding
+- `systems/time.md` — the clock: on the website it is the visitor's real local time, fed in with `syncClock` (no action advances it); a single absolute calendar date is the ONLY format shown; `formatCalendarDate`'s token-based formatting; and the "absolute trigger minute, compared lazily" pattern for time-sensitive state
+- `systems/economy.md` — player money (integer minor units, a `Player` scalar), the engine/i18n price formatting split, and the buy flow (notebooks are the only thing for sale; travel is free)
 - `systems/menu.md` — the domain-agnostic multi-screen `MenuFlow` system
   (numbered choice lists + free-text prompts, universal back/exit), and
-  `travelMenus.ts`, the one real domain built on it so far
+  `disambiguationMenus.ts`, `buyMenu.ts` and the other domains built on it
 - `systems/notebooks.md` — player-carried notebooks for jotting notes,
   built end to end: engine/data layer (types, `GameEngine` mutation
   calls, `NotebookProduct` content, `SAVE_SCHEMA_VERSION` 4), the
   generalized `buy` menu, `notebook`/`jotDown` commands, and a
   full-screen page-view overlay (native-textarea editing, commit-time
   strikethrough diffing, live overflow hard-stop via `maxLength`)
-- `systems/save.md` — the save/load design: the `Placement` split that
-  separates static content from mutable case-instance state (done), and
-  the planned `SaveData`/save-file mechanism built on it (not yet built)
 - `systems/parsing.md` — the ICommandParser interface, why parsing is
   swappable per language, and why `inquire` was retired as a standalone
   verb in favor of the `travel` menu
@@ -335,21 +325,14 @@ interior-hop flat-rate special case — and curve-editing now writes the
 dragged curve to EVERY `Connection` in a pair's group at once, since the
 group renders as one line and there's nothing left to keep in sync.
 
-**Save/load now exists**: manual `save`/`load` commands, one
-`localStorage` slot, built on a `GameState` split between static content
-(`locations`/`items`/`npcs`/`transitLines`/`passes`, reloaded fresh from
-`world.yaml` every launch, never saved) and a mutable slice
-(`player`/`clock`/`placement`) that a save actually persists — see
-`systems/save.md` and `architecture.md`'s "Static content vs. mutable
-state". `placement` (`Placement`, `engine/types.ts`) is a new
-`GameState` field holding WHERE every item/NPC currently is —
-`Location`/`Npc` no longer carry `itemIds`/`npcIds`/`locationId` at
-runtime, even though `world.yaml` still authors them per-location/per-NPC
-(`cityLoader.ts` moves them into `CityContent.initialPlacement`), since
-item/NPC placement is case-instance data (expected to change per case,
-eventually procedurally) rather than fixed content. Not yet built:
-autosave, multiple save slots, and schema migration (see `systems/save.md`
-for what each would take).
+**Save/load was removed** (2026-10-13), together with the travel-time, fare,
+transit-line, pass and transport-mode machinery: the website needs neither.
+`GameState` still splits static content from a mutable slice, and `placement`
+(`Placement`, `engine/types.ts`) still holds WHERE every item/NPC currently is
+(`Location`/`Npc` carry no `itemIds`/`npcIds`/`locationId` at runtime;
+`cityLoader.ts` moves the authored ones into `CityContent.initialPlacement`),
+see `architecture.md`'s "Static content vs. mutable state". Travel is free,
+instant and a plain shortest-hop search (`systems/navigation.md`).
 
 **World objects can now have sub-parts, states, and containment** (a
 desk's drawers, open/closed; a lighter's engraved symbol; a torn

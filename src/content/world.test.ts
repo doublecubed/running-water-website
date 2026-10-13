@@ -38,43 +38,18 @@ describe("world content", () => {
     }
   });
 
-  it("has every connection's transitLineId (if any) point to a real entry in transitLines", () => {
-    const state = createInitialState();
-    for (const location of Object.values(state.locations)) {
-      for (const connection of location.connections) {
-        if (!connection.transitLineId) continue;
-        expect(
-          state.transitLines[connection.transitLineId],
-          `location "${location.id}" has a connection to "${connection.toId}" with transitLineId "${connection.transitLineId}", which has no entry in transitLines`,
-        ).toBeDefined();
-      }
-    }
-  });
-
-  it("has every pass's lineIds point to real entries in transitLines", () => {
-    const state = createInitialState();
-    for (const pass of Object.values(state.passes)) {
-      for (const lineId of pass.lineIds) {
-        expect(
-          state.transitLines[lineId],
-          `pass "${pass.id}" lists lineIds "${lineId}", which has no entry in transitLines`,
-        ).toBeDefined();
-      }
-    }
-  });
-
   it("resolves the studio's inline text and starts the player there", () => {
     const state = createInitialState();
     expect(state.player.locationId).toBe("studio-landing");
     expect(rawLookup(state.locations["studio-landing"]!.nameKey)).toBe("The Landing");
   });
 
-  it("has every pass with at least one alias, and every alias lowercase", () => {
+  it("has every notebook product with at least one alias, and every alias lowercase", () => {
     const state = createInitialState();
-    for (const pass of Object.values(state.passes)) {
-      expect(pass.aliases.length, `pass "${pass.id}" has no aliases — nothing could ever "buy" it`).toBeGreaterThan(0);
-      for (const alias of pass.aliases) {
-        expect(alias, `pass "${pass.id}" has a non-lowercase alias "${alias}"`).toBe(alias.toLowerCase());
+    for (const product of Object.values(state.notebookProducts)) {
+      expect(product.aliases.length, `notebook product "${product.id}" has no aliases — nothing could ever "buy" it`).toBeGreaterThan(0);
+      for (const alias of product.aliases) {
+        expect(alias, `notebook product "${product.id}" has a non-lowercase alias "${alias}"`).toBe(alias.toLowerCase());
       }
     }
   });

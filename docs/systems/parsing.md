@@ -34,19 +34,19 @@ language's own rules — it does not touch `EnglishCommandParser`, the
 ## Public capabilities
 
 - `Command.ts` — the shared output contract. Currently: `look`, `travel`,
-  `travelMenu`, `take`, `buyPass`, `inventory`, `talk`, `examine`, `help`,
+  `take`, `buy`, `buyMenu`, `inventory`, `talk`, `examine`, `help`,
   `setPanel` (which fixed side-panel slot shows which content —
   `"locations" | "verbs" | "inventory" | "facts" | "closed"`, see "Side
   panels" below and `TerminalView`'s `SIDE_PANELS` registry), `panelMenu`
   (bare `panel <slot>` — opens a menu of that content list instead of
-  failing as unknown), `time`, `travelPreference`, `devAddMoney`,
+  failing as unknown), `time`, `devAddMoney`,
   `devToggleAllLocations`, `board` (opens the case board overlay — see
   docs/systems/case-board.md), `unknown`.
   **`inquire` was
-  retired as a standalone verb** — see `docs/systems/menu.md` — freeing
-  the word for future investigation use (interrogation, etc.); bare
-  `travel` (→ `travelMenu`) now covers what it used to do, via a menu
-  instead of a single command. This is modeled as verb (+ object, and
+  retired as a standalone verb**, freeing the word for future investigation use
+  (interrogation, etc.). The bare-`travel` menu, `prefer` / `travelPreference`,
+  and `save` / `load` were removed along with the fare and save systems: bare
+  `travel` and bare `go` are now unknown. This is modeled as verb (+ object, and
   room for a future subject — e.g. "give letter to informant" or a
   typed-dialogue topic like "ask barkeep about murder") — extend this
   union when a new action needs representing, not any one parser's
@@ -134,7 +134,7 @@ failing as unknown** — `{ kind: "panelMenu", slot }`
 (`EnglishCommandParser`'s `panel` rule), built into a `MenuScreen` by
 `view/menu/panelMenus.ts`'s `buildPanelMenuScreen`, one option per
 `PanelContentId` (`"closed"` offered as "None", with a `"none"` alias),
-same `MenuFlow` mechanism as `buyMenu`/`travelMenu`/the NPC topic menu.
+same `MenuFlow` mechanism as `buyMenu`/the NPC topic menu.
 Selecting an option calls `TerminalView.setPanelContent` — the same
 write path `setPanel` uses — directly (not the toggle logic; picking
 from the menu always sets to what was picked, there's nothing to toggle
@@ -205,21 +205,12 @@ prompt; `TerminalView` intercepts input while a menu is active (a bare
 number, or the universal `back`/`exit`/`cancel` keywords) BEFORE it ever
 reaches `ICommandParser.parse()` — so no `Command` kind or parser rule is
 needed for navigating a menu itself. Only entering one needs a `Command`
-(`travelMenu`, for bare `travel`).
+(`buyMenu` for bare `buy`, `panelMenu` for bare `panel <slot>`).
 
-`ActionResult.choices?: (TravelChoice | ResolutionChoice)[]` (`types.ts`)
-is how `GameEngine` reports labeled options — `TravelChoice`
-(`inquireTravel`, `listDirectConnections`) for travel, and
-`ResolutionChoice` (`examine`, `takeItem`) for "which one do you mean?"
-ambiguous-target disambiguation, see `docs/systems/parts.md`'s "Ambiguous
-targets." Rather than generalizing `TravelChoice.kind` itself, the second
-real use case got its own sibling type with its own `kind: "resolution"`
-discriminant — `id` means something different for each (an opaque
-mode/category/destination token to re-quote back at `travelTo`, vs. a
-real `WorldObjectId` to look up directly), so a shared shape would have
-had to paper over that difference rather than express it.
-`src/view/menu/travelMenus.ts` and `src/view/menu/disambiguationMenus.ts`
-are what turn each into `MenuScreen`s; `MenuFlow` itself has no idea
-either type exists. A third domain (dialogue, accusation, ...) should
-likewise get its own choice type and screen-builder file rather than
-overloading one of these two.
+`ActionResult.choices?: ResolutionChoice[]` (`types.ts`) is how `GameEngine` reports
+labeled options: `ResolutionChoice` (`examine`, `takeItem`) for "which one do you
+mean?" ambiguous-target disambiguation, see `docs/systems/parts.md`'s "Ambiguous
+targets." (A travel-specific `TravelChoice` used to sit beside it and was removed
+with the travel menu.) `src/view/menu/disambiguationMenus.ts` turns it into a `MenuScreen`; `MenuFlow`
+itself has no idea the type exists. A further domain (accusation, ...) should
+likewise get its own choice type and screen-builder file.

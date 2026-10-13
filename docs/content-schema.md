@@ -1,6 +1,6 @@
 # Content Schema
 
-Content (locations, world objects, NPCs, transit lines, passes) is
+Content (locations, world objects, NPCs) is
 defined as plain data conforming to the types in `src/engine/types.ts`.
 **Authored as YAML, split across many files** — see "Authoring workflow"
 below for the layout — and parsed/validated by
@@ -30,7 +30,7 @@ author never types or invents one.
   file automatically via Vite's `import.meta.glob`, so dropping a new
   file into either folder is picked up on the next dev-server reload or
   build. `src/content/city/world.yaml` itself holds only `npcs`/
-  `transitLines`/`passes` — today's counts are small enough not to be
+  `labels`/`facts`/`notebookProducts` — today's counts are small enough not to be
   worth splitting into their own directory yet; the exact same
   `import.meta.glob` mechanism extends to them trivially later if that
   changes.
@@ -39,7 +39,7 @@ author never types or invents one.
   `content/world.ts` loads, so a saved change shows up on the next
   reload with no separate build step.
 - **Entries can be written in ANY order, across ANY files.** A
-  connection's `toId`, an interior's `exteriorId`, a `transitLineId`, an
+  connection's `toId`, an interior's `exteriorId`, an
   NPC's `locationId`, a `containerId` — these are all just string
   references, resolved after every file has been read into one merged,
   id-keyed lookup table. Nothing needs to be defined "above," or even in
@@ -49,8 +49,8 @@ author never types or invents one.
   compiler (a typo'd field, a dangling `toId`, would simply fail to
   compile); external YAML data loses that entirely, so `cityLoader.ts`
   puts it back: required fields, correct types, valid enum values
-  (`kind`, `modes`, `compassLabel`), AND referential integrity (does
-  this `toId`/`exteriorId`/`transitLineId`/`locationId`/`itemIds`/
+  (`kind`, `compassLabel`), AND referential integrity (does
+  this `toId`/`exteriorId`/`locationId`/`itemIds`/
   `npcIds`/`lineIds`/`containerId`/`containerPartId` actually point to
   something that exists, and is it free of containment cycles). A
   malformed file throws ONE `Error` listing EVERY problem found across
@@ -61,7 +61,7 @@ author never types or invents one.
   non-optional array fields on the TS types — `aliases`, `itemIds`,
   `npcIds`, and a location's `connections` all default to `[]` when
   omitted, so a location with no items or NPCs doesn't need to write out
-  empty lists. Required fields (`modes` on a connection, for example)
+  empty lists. Required fields (`toId` on a connection, for example)
   still have to be present, even if the list itself could be empty.
 - **`itemIds`/`npcIds` (per location) and `locationId` (per NPC) author
   WHERE things start out, not a property of the location/NPC itself.**
@@ -76,7 +76,7 @@ author never types or invents one.
   a different starting arrangement — see the project's
   procedural-case-content plan), not static city/catalog content, and
   it's exactly the slice a save file persists — see
-  `docs/systems/save.md`.
+  the (removed) save system.
 - Content-QUALITY checks (e.g. "does every location's `aliases` include
   its own displayed name") are deliberately NOT part of `cityLoader.ts`
   — they still live in `src/content/world.test.ts`, running against
@@ -91,8 +91,8 @@ author never types or invents one.
   Objects, and NPCs tabs edit locations/world objects/NPC core fields
   respectively (the NPCs tab covers id/aliases/starting location/labels/
   name-description-fallback-dialogue only — `dialogueRules`/`topics`/
-  `schedule`/`stats` still have no UI); `world.yaml`'s `transitLines`/
-  `passes` are still read-only, purely to validate against them. Its
+  `schedule`/`stats` still have no UI); `world.yaml`'s `labels`/`facts`/
+  `notebookProducts` are still read-only. Its
   separate Prefabs tab edits `content/prefabs/*.yaml` — see "Location
   prefab" below — a DIFFERENT content tree with its own loader
   (`prefabLoader.ts`), never touched by
@@ -133,8 +133,6 @@ Derived keys follow the SAME convention content authors used to hand-type:
 | Part | `<kind>.<objectId>.<partId>.name`, `.description` |
 | PartState | `<kind>.<objectId>.<partId>.<stateId>.name`, `.description`, `.summary` (only if a `summary` field is authored) |
 | Npc | `npc.<id>.name`, `.description`, `.dialogue` (the fallback line), `.dialogue.<n>` (one per authored `dialogueRules` entry, 0-indexed — see `docs/systems/dialogue.md`), `.topic.<topicId>.label`/`.dialogue`/`.response.<n>` (one per authored `topics` entry, see "NPC topics" below) |
-| TransitLine | `line.<id>.name` |
-| Pass | `pass.<id>.name` |
 
 Keys are fully namespaced per entity now (a part-state's `id` like
 `"closed"` no longer resolves through a shared, hand-coordinated
@@ -163,21 +161,11 @@ rate).
   y: 320
   connections:
     - toId: alley
-      distanceKm: 0.2
-      modes: [foot]
       compassLabel: north
     - toId: highway
-      distanceKm: 1.5
-      modes: [foot, car]
       compassLabel: east
-    - toId: docks
-      distanceKm: 6
-      modes: [foot]              # no compassLabel: reachable only by naming it
+    - toId: docks              # no compassLabel: reachable only by naming it
     - toId: precinct
-      distanceKm: 0.4
-      modes: [foot, bus]
-      costsMinor:                # optional — a mode with no entry (or "foot", typically) is free
-        bus: 15                  # bus fare: $0.15
 
 # content/city/locations/diner.yaml — interior; this location's own name
 # IS its entry point (a lobby, for a multi-room building; the whole
@@ -191,8 +179,6 @@ rate).
   aliases: [diner, corner diner]
   connections:
     - toId: street
-      distanceKm: 0.3
-      modes: [foot]
       compassLabel: east
 
 # content/city/locations/warehouse.yaml — a windowless interior: darker
@@ -262,8 +248,7 @@ meant to be a normal two-way street. See `docs/systems/navigation.md`.
 map canvas (`src/mapview/MapView.ts`) — plain SVG user units, unscaled,
 with no fixed meaning beyond "position relative to other locations."
 Purely presentational: nothing in the engine or pathfinding reads them
-(routing is graph-distance-based, via `Connection.distanceKm`, not
-spatial). A location with no `x`/`y` simply can't be shown on the map yet
+(routing is graph-based, via shortest hop count, not spatial). A location with no `x`/`y` simply can't be shown on the map yet
 — not an error; see `docs/architecture.md`'s map-viewer section and
 `docs/future_work.md`'s node-graph-editor entry for what's built so far.
 
@@ -274,50 +259,7 @@ still fully reachable by naming the destination (`go to the docks`).
 them ONLY when a location has exactly one door (nothing else to
 disambiguate); a location with several buildings sharing one exterior
 keeps each building's own distinguishing compass word instead. This is
-purely a naming choice — it has no effect on whether a connection gets
-the flat interior travel rate (see `docs/systems/navigation.md`).
-
-`modes` lists which `TransportMode`s (`"foot" | "car" | "ship" | "taxi" | "bus"`)
-work on that specific connection — not how fast they are; speeds are
-defined once, centrally, in `src/engine/navigation/transportModes.ts`. An
-edge listing no usable mode is treated as impassable (pathfinding skips it).
-
-`costsMinor` is an optional `Partial<Record<TransportMode, number>>` flat
-fare per mode, in minor units (see `docs/systems/economy.md`) — a mode
-with no entry is free. Use it only for a genuinely flat, one-off fare
-with no line concept — `taxi` and any mode on a `transitLineId`
-connection ignore it entirely (see below). **Not yet used by route
-selection or charged on travel** — see `docs/systems/economy.md`'s
-"known gaps" before adding a paid mode to real content.
-
-`taxi` is never priced via `costsMinor` — it's always the metered formula
-`TAXI_FARE.flagFeeMinor + TAXI_FARE.perKmMinor × distanceKm`
-(`src/engine/navigation/transportModes.ts`), computed from `distanceKm`
-automatically. Content never sets a taxi price directly.
-
-`transitLineId` (optional string) tags a connection as part of a named
-bus/train/ferry line — riding several consecutive connections that share
-the same `transitLineId` charges the line's fare only once (a free
-transfer for the rest), rather than per hop:
-
-```yaml
-# Three stops on the same bus line — fare paid once, not three times.
-- toId: b
-  distanceKm: 1
-  modes: [bus]
-  transitLineId: bus-7
-- toId: c
-  distanceKm: 1
-  modes: [bus]
-  transitLineId: bus-7
-- toId: d
-  distanceKm: 1
-  modes: [bus]
-  transitLineId: bus-7
-```
-
-The fare itself lives on a `TransitLine`, in the world's `transitLines`
-table (keyed by id), not on the connections — see below.
+purely a naming choice (see `docs/systems/navigation.md`).
 
 `curve` is an optional single quadratic-bezier control point
 (`{ cx, cy }`, same SVG user units as `x`/`y`) that bends a connection's
@@ -328,55 +270,13 @@ hand-writing directly.
 
 ```yaml
 - toId: docks
-  distanceKm: 3
-  modes: [taxi]
   curve: { cx: 450, cy: 250 }   # bends the line instead of drawing it straight
 ```
 
-## TransitLine
-
-`transitLines`/`passes` are authored in `content/city/world.yaml`
-(alongside `npcs`) — not split into their own directory yet, see
-"Authoring workflow" above.
-
-```yaml
-transitLines:
-  - id: bus-7
-    text:
-      en: { name: Bus Line 7 }
-    fareMinor: 25   # $0.25 to board
-```
-
-`GameState.transitLines` is a flat table keyed by id, alongside
-`locations`/`worldObjects`/`npcs` — the YAML author writes a plain LIST
-(see above); `cityLoader.ts` is what keys it by `id` into the `Record`
-the engine actually uses. `fareMinor` is paid once per boarding — see the
-`transitLineId` note above and `docs/systems/economy.md`.
-
-## Pass
-
-```yaml
-passes:
-  - id: bus1-weekly
-    text:
-      en: { name: Bus Line 1 Weekly Pass }
-    aliases: [weekly pass, bus pass, weekly bus pass, bus line 1 weekly pass]
-    priceMinor: 1500      # $15.00
-    durationDays: 7       # always expires at a day boundary — see below
-    lineIds: [bus-1]      # a list: a future pass could cover several lines at once
-```
-
-`GameState.passes` is a flat table keyed by id, alongside
-`transitLines` (same list-in-YAML, `Record`-at-runtime split as above).
-Buying one (`buy <alias>`, alias-matched like items/NPCs — see
-`aliases`) via `GameEngine.buyPass` makes every `TransitLine` in
-`lineIds` free to ride for `durationDays` CALENDAR days — see
-`docs/systems/economy.md`'s "Passes" section and
-`docs/systems/time.md`'s "Time-sensitive state" for exactly how the
-day-aligned expiry is computed (never a naive `durationDays * 1440`
-minutes from the moment of purchase). `lineIds` is a list specifically
-so a future pass can cover a whole network without changing this shape —
-content just lists more ids.
+A connection has no distance, transport mode, fare or transit line: travel is
+free and instant (see `docs/systems/navigation.md`). Those fields (and the
+`transitLines`/`passes` tables in `world.yaml`) were removed; the loader no longer
+reads them.
 
 ## World object
 
@@ -715,24 +615,18 @@ player: {
   locationId: "office",
   inventory: [],
   money: 15000,
-  boardedLineId: null,
-  travelPreference: "foot",
   visitedLocationIds: ["office"],
-  activePasses: [],
   stats: {},
   stealthMode: false,
 },
 ```
 
 `money` is an integer count of minor units (see `docs/systems/economy.md`)
-— never a float. `boardedLineId` should always start `null` — it tracks
-which `TransitLine`, if any, the player currently holds a fare for; see
-the `transitLineId` note above. `visitedLocationIds` should always
+— never a float. `visitedLocationIds` should always
 include the starting `locationId` — it's what the locations panel uses
 to filter to "discovered" places (see `docs/systems/navigation.md`), and
 a location the player starts standing in has, definitionally, already
-been visited. `activePasses` should always start `[]` — see the `Pass`
-section above and `docs/systems/economy.md`. `stats` is optional (an
+been visited. `stats` is optional (an
 absent key or the whole field falls back to that stat's registry
 default via `getStatValue`/`GameEngine.getPlayerStat` — see
 `docs/systems/stats.md`); seeded `{}` here for parity with
@@ -759,8 +653,8 @@ default via `getStatValue`/`GameEngine.getPlayerStat` — see
   Far Pier") actually lowercases to — so `go to the far pier` failed even
   though that's literally what the game called it.
 - Every dangling-ID reference — `Connection.toId`, `InteriorLocation.exteriorId`
-  (and that it resolves to `kind: "exterior"`), `Connection.transitLineId`,
-  NPC `locationId`, location `itemIds`/`npcIds`, `Pass.lineIds`,
+  (and that it resolves to `kind: "exterior"`), 
+  NPC `locationId`, location `itemIds`/`npcIds`,
   `containerId`/`containerPartId` (and freedom from containment cycles) —
   IS validated, at every app startup, across EVERY content file, by
   `src/content/cityLoader.ts`'s `parseCity`. A hardcoded TS array got this

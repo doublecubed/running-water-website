@@ -38,7 +38,7 @@ export interface MapEdge {
   fromId: string;
   toId: string;
   curve?: { cx: number; cy: number };
-  /** Optional multi-line hover-popup text, mirroring `MapNode.tooltip` — e.g. the grouped-connection editor/worldmap views use this to summarize which travel modes are available. Omit for an edge with no tooltip. */
+  /** Optional multi-line hover-popup text, mirroring `MapNode.tooltip` — e.g. the grouped-connection editor/worldmap views use this to list a connection's compass labels. Omit for an edge with no tooltip. */
   tooltip?: string;
   /** Which direction(s) this edge actually represents — "forward" = fromId→toId, "backward" = toId→fromId. Drives how many arrowheads `render()` draws (0, 1, or 2) and, for "backward", the arrowhead's orientation. Omit (or empty) to draw no arrowheads at all, e.g. for an edge whose directionality isn't meaningful to show. */
   arrows?: ("forward" | "backward")[];

@@ -44,8 +44,6 @@ npcs:
         dialogue: >-
           {npcKey} bows. "Hail again! Ask me anything, or step through the door to
           the corridor."
-transitLines: []
-passes: []
 notebookProducts:
   - id: pocket-notebook
     aliases:

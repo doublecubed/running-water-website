@@ -155,9 +155,9 @@ covering the SEPARATE `content/prefabs/` tree (see
 `content/prefabLoader.ts`). The first three edit `city` (`CityContent`,
 from `cityLoader.ts`); the prefab editor edits a wholly different,
 parallel `prefabs` (`PrefabContent`, from `prefabLoader.ts`) that the
-game never loads. `transitLines`/`passes` still have no editor UI;
+game never loads. `labels`/`facts`/`notebookProducts` still have no editor UI;
 `world.yaml` is read purely so `parseCity` can validate referential
-integrity against them (a pass's `lineIds`, ...). NPCs are a partial
+integrity against them. NPCs are a partial
 exception: the NPC editor writes core fields (id, aliases, starting
 location, labels, name/description/fallback-dialogue text) back into
 `world.yaml`, but `dialogueRules`/`topics`/`schedule`/`stats`/initial
@@ -424,7 +424,7 @@ hide-show sidebar) but a genuinely different SAVE shape: `city.npcs`
 comes from `world.yaml`'s `npcs:` array, not a per-entity file the
 Locations/Objects/Prefabs editors' `*Origin`/`dirty*Files` machinery was
 built around, and `world.yaml` also carries `labels`/`facts`/
-`transitLines`/`passes` this editor doesn't edit at all.
+`notebookProducts` this editor doesn't edit at all.
 
 - **Core fields plus schedule plus stats/trust/suspicion.** The form
   edits id (locked once created, same convention as every other entity),
@@ -481,7 +481,7 @@ built around, and `world.yaml` also carries `labels`/`facts`/
   records), the NPC editor keeps `world.yaml` parsed into a plain
   `worldRaw: Record<string, unknown>` at project-open time (`load()` from
   `js-yaml`) and treats everything except `worldRaw.npcs` as opaque —
-  `labels`/`facts`/`transitLines`/`passes` are carried through byte-
+  `labels`/`facts`/`notebookProducts` are carried through byte-
   identical at the parsed-value level, with no reversal ("toRaw") logic
   written for content this editor never touches. `regenerateWorldFile()`
   just re-dumps the whole `worldRaw` object and sets a single
@@ -618,22 +618,22 @@ does not preserve hand-written comments/formatting — see
 `docs/open-issues.md`. A file never touched this session is left
 completely alone on disk, so its comments survive regardless — but
 `world.yaml` is single-file, so touching any ONE NPC means the WHOLE
-file (including its untouched `labels`/`facts`/`transitLines`/`passes`
+file (including its untouched `labels`/`facts`/`notebookProducts`
 content) loses its comments/formatting too, not just that NPC's own
 entry.
 
 ## Static content vs. mutable state
 
-`GameState` splits into two kinds of data, and it matters which is which
-— see `docs/systems/save.md` for the full save/load design this split
-exists for:
+`GameState` splits into two kinds of data, and it matters which is which. (There
+is no save/load anymore, so nothing is persisted; the split keeps content
+reloadable and the mutable slice small and JSON-safe.)
 
-- **Static content** — `locations`, `items`, `npcs`, `transitLines`,
-  `passes`. Authored in `content/city/world.yaml`, parsed by
-  `cityLoader.ts`, reloaded fresh every launch. Never written to a save.
-- **Mutable state** — `player`, `clock`, and `placement` (`Placement`,
-  `engine/types.ts`: WHERE every world object/NPC currently is). This is
-  what a save file actually persists.
+- **Static content**: `locations`, `items`, `npcs`, `notebookProducts`, labels,
+  facts. Authored in `content/city/world.yaml` and the per-folder YAML, parsed by
+  `cityLoader.ts`, reloaded fresh every launch.
+- **Mutable state**: `player`, `clock`, and `placement` (`Placement`,
+  `engine/types.ts`: WHERE every world object/NPC currently is), plus flags, NPC
+  state, notebooks, facts learned and the case board.
 
 `placement` deliberately isn't folded into `locations`/`npcs` — a
 location's `Location.itemIds`/`npcIds` and an NPC's `locationId` don't
@@ -645,8 +645,8 @@ data — it's set up once per case (today, straight from `world.yaml`;
 later, by a procedural case generator) and changes during play
 (`GameEngine.takeItem` mutates `state.placement.worldObjectLocationId`,
 not any `Location`). Treating it as static content would mean either
-baking one fixed arrangement into every case, or silently losing a
-player's progress the moment content gets reloaded around a save.
+baking one fixed arrangement into every case, or losing a
+player's progress the moment content gets reloaded.
 `GameEngine` looks up "what's at this location" via `engine/placement.ts`'s
 `worldObjectsAtLocation`/`npcsAtLocation` (a reverse index over
 `Placement`), never via a field on `Location`/`Npc`. A world object can

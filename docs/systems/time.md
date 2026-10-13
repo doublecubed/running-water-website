@@ -2,22 +2,22 @@
 
 ## What it does
 
-A single simulated clock, `GameState.clock.minutesElapsed` — minutes
-since the game's epoch. `GameState.clock.epoch` (a `{year, month, day}`,
-set once by content — see `content/world.ts`, currently 18 September
-1946) is the real-world calendar date `minutesElapsed = 0` corresponds
-to.
+A single clock, `GameState.clock.minutesElapsed`: minutes since the clock's
+epoch. `GameState.clock.epoch` (a `{year, month, day}`) is the calendar date
+`minutesElapsed = 0` corresponds to.
 
-**This absolute calendar date is the ONLY time format the game shows —
-there is no relative "Day N" format anymore.** An earlier version of this
-system displayed "Day N, HH:MM" and kept the absolute calendar date built
-but unused. That was deliberately dropped: a detective game needs NPCs to
-reference real past dates, newspapers to carry real dates, and — the
-concrete case that forced the removal — a pass system (see
-`docs/systems/economy.md`) whose expiry has to read as an actual date
-("Expires: 25 September 1946"), not "Day 8." Keeping both formats around
-just to eventually retire one wasn't worth the complexity; "Day N" was
-removed outright rather than kept as a secondary display.
+**On the website the clock is the visitor's real local time.** `main.ts` builds
+the initial state with today's local date as the epoch (`view/wallClock.ts`'s
+`localEpoch`), and `TerminalView.startWallClock()` feeds the engine
+`syncClock(minutesSinceEpoch(...))` immediately and then every 15 s. The engine
+never reads `Date`: converting wall-clock time into minutes is the view's job.
+`GameEngine.syncClock` is the ONLY writer of `minutesElapsed`: **travel and
+other actions take no time** (the old travel-time system is gone, see
+`navigation.md`).
+
+**This absolute calendar date is the ONLY time format the game shows;
+there is no relative "Day N" format.** NPCs can reference real dates, and the
+status bar shows the real date and time.
 
 A real clock (not abstracted time-of-day blocks) was chosen because the
 genre needs precise timestamps (alibis: "where were you at 23:40?"). The
@@ -73,44 +73,25 @@ calendar layer extends that same reasoning to actual dates.
   different language pick its own date ordering later).
 - `GameEngine.checkTime()` — event with the current calendar params (see
   `calendarDisplayParams`) for the `time`/`clock` command.
-- `GameEngine`'s private `advanceClock(minutes)` is the only place
-  `GameState.clock.minutesElapsed` is mutated. Called by `travelTo` after
-  a successful move (both the compass fast path and pathfound routes).
+- `GameEngine.syncClock(minutesElapsed)` is the only place
+  `GameState.clock.minutesElapsed` is mutated. It also resyncs scheduled NPCs
+  (`syncNpcLocations`), so they move to where their routine says they are now.
+  `travelTo` resyncs NPCs on arrival but does not move the clock.
 
-## Time-sensitive state (passes, and anything like them later)
+## Time-sensitive state (deadlines, schedules, and anything like them later)
 
-`engine/time/calendar.ts` also has `minutesUntilDayAlignedExpiry(now,
-days)` and is the home of the general pattern this project uses for ANY
-time-sensitive/countdown state — passes today (see
-`docs/systems/economy.md`), likely case deadlines, NPC schedules, or
-evidence windows later:
+`engine/time/calendar.ts` is the home of the general pattern this project uses
+for ANY time-sensitive/countdown state (case deadlines, NPC schedules, evidence
+windows, ...):
 
-**Store an ABSOLUTE trigger minute, computed once; compare it lazily
-against the current clock wherever it matters. Never store a "remaining
-duration" that needs decrementing as time passes.**
-
-`ActivePass.expiresAtMinutesElapsed` (`types.ts`) is the first real
-example: `GameEngine.buyPass` computes it once, and `costOfMode`
-(`navigation/transportModes.ts`) checks it with a plain `<` comparison.
-Nothing "ticks" a pass down turn by turn — there is no per-turn or
-per-minute update loop for this at all, and none is needed. This was an
-explicit design discussion (see the pass system's design notes in
-`docs/systems/economy.md`): the tempting alternative — store "minutes
-remaining" and decrement it somewhere on every clock advance — would
-require a universal "time passed" hook threaded through everywhere the
-clock moves, just to keep a number that a lazy comparison against
-`GameClock.minutesElapsed` makes entirely unnecessary.
-
-**`minutesUntilDayAlignedExpiry(nowMinutesElapsed, days)`** is the other
-half of the pass system's design: a duration expressed in "N days" should
-always expire at a DAY BOUNDARY (midnight starting the day after the
-Nth), not `days * 1440` minutes from the exact moment of purchase — that
-would drift to whatever time-of-day the purchase happened to occur at
-(a 7-day pass bought at 08:00 would expire at 08:00 seven days later, an
-odd time for something framed as calendar-day validity). A partial
-"today" counts as the first of the N days: buying a 7-day pass at 08:00
-covers the rest of today plus 6 more full days, expiring exactly at
-00:00 on day 8.
+**Store an ABSOLUTE trigger minute, computed once; compare it lazily against the
+current clock wherever it matters. Never store a "remaining duration" that needs
+decrementing as time passes.** With a real-time clock this is even more
+important: nothing ticks, the clock just moves underneath the comparison.
+`minutesUntilDayAlignedExpiry(now, days)` remains available for "N calendar
+days" durations that should end at a midnight boundary rather than drift to the
+time of day they started. (It was written for passes, which no longer exist;
+nothing calls it today.)
 
 **No universal "time passed" event/tick system is built, and none is
 planned until a concrete feature actually needs one.** The
@@ -126,22 +107,17 @@ can't be expressed lazily.
 
 ## How it interacts with other systems
 
-- **Navigation** is the only current source of elapsed time — every
-  successful `travelTo` call advances the clock by the actual minutes the
-  chosen route/mode costs. `look()`, `takeItem()`, `talkTo()`, `examine()`
-  do not advance it.
-- **Economy**: the pass system's expiry — see "Time-sensitive state"
-  above and `docs/systems/economy.md`.
+- **Navigation** takes no time; it only resyncs scheduled NPCs on arrival.
+- **View**: `startWallClock` is the sole source of time.
 - **Content** sets the epoch once, at world creation
-  (`content/world.ts`'s `createInitialState`) — currently 18 September
-  1946. Changing the game's setting/era means changing this one value;
-  nothing else references a hardcoded date.
+  (`content/world.ts`'s `createInitialState`) — defaulting to 18 September 1946
+  when no epoch is passed; the website passes today's local date.
 - **View**: `TerminalView`'s persistent clock line and the current-
   location line together answer "when it is and where we are" — see
   `docs/systems/navigation.md`'s "Discovered locations" section for the
   location half.
-- **NPC schedules** are the first consumer: `advanceClock` calls
-  `syncNpcLocations` (`engine/npc/schedule.ts`) right after bumping
+- **NPC schedules** are the first consumer: `syncClock` calls
+  `syncNpcLocations` (`engine/npc/schedule.ts`) right after setting
   `minutesElapsed`, moving scheduled NPCs to where their table says they are
   now. It is a sync at the moment time moves, not a tick loop, and it keeps
   `placement` the single stored truth — see `docs/systems/npcs.md`.
@@ -152,4 +128,4 @@ can't be expressed lazily.
 
 ## Known gaps
 
-- No "wait" or "pass time" action yet — the clock only moves via travel.
+- No "wait" or "pass time" action: the clock only follows real time.

@@ -15,8 +15,6 @@ const MINIMAL_LOCATION = `
     en: { name: A, description: Location A. }
   connections:
     - toId: b
-      distanceKm: 1
-      modes: [foot]
 - id: b
   kind: exterior
   aliases: [b]
@@ -33,7 +31,7 @@ describe("parseCity", () => {
       kind: "exterior",
       nameKey: "location.a.name",
       descriptionKey: "location.a.description",
-      connections: [{ toId: "b", distanceKm: 1, modes: ["foot"] }],
+      connections: [{ toId: "b" }],
     });
     expect(city.worldObjects).toEqual({});
     expect(city.npcs).toEqual({});
@@ -94,7 +92,7 @@ describe("parseCity", () => {
     expect(Object.keys(city.worldObjects).sort()).toEqual(["chair", "desk"]);
   });
 
-  it("derives location/world-object/npc/transitLine/pass keys from id, never requiring an author-typed key", () => {
+  it("derives location/world-object/npc keys from id, never requiring an author-typed key", () => {
     const city = parseCity(
       files({
         locationFiles: { "locations/a.yaml": MINIMAL_LOCATION },
@@ -111,23 +109,12 @@ npcs:
   - id: clerk
     locationId: a
     text: { en: { name: the clerk, description: A clerk., dialogue: Hello. } }
-transitLines:
-  - id: bus-1
-    fareMinor: 300
-    text: { en: { name: Bus Line 1 } }
-passes:
-  - id: weekly
-    priceMinor: 1500
-    durationDays: 7
-    text: { en: { name: Weekly Pass } }
 `,
       }),
     );
     expect(city.locations.a).toMatchObject({ nameKey: "location.a.name", descriptionKey: "location.a.description" });
     expect(city.worldObjects.desk).toMatchObject({ nameKey: "setpiece.desk.name", descriptionKey: "setpiece.desk.description" });
     expect(city.npcs.clerk).toMatchObject({ nameKey: "npc.clerk.name", descriptionKey: "npc.clerk.description", dialogueKey: "npc.clerk.dialogue" });
-    expect(city.transitLines["bus-1"]).toMatchObject({ nameKey: "line.bus-1.name" });
-    expect(city.passes.weekly).toMatchObject({ nameKey: "pass.weekly.name" });
   });
 
   it("emits every text field, for every language present, into derivedLocale under the same derived keys", () => {
@@ -824,7 +811,7 @@ npcs:
     ).toThrow(/circular containment/);
   });
 
-  it("parses npcs/transitLines/passes from world.yaml, still validating their referential integrity", () => {
+  it("parses npcs from world.yaml, still validating their referential integrity", () => {
     expect(() =>
       parseCity(
         files({

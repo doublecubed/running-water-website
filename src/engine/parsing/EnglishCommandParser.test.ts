@@ -21,19 +21,16 @@ describe("EnglishCommandParser", () => {
     expect(parser.parse("panel right map")).toEqual({ kind: "setPanel", slot: "right", content: "locations" });
     expect(parser.parse("panel left close")).toEqual({ kind: "setPanel", slot: "left", content: "closed" });
     expect(parser.parse("time")).toEqual({ kind: "time" });
-    expect(parser.parse("prefer")).toEqual({ kind: "travelPreference" });
-    expect(parser.parse("prefer taxi")).toEqual({ kind: "travelPreference", preference: "taxi" });
-    expect(parser.parse("prefer cab")).toEqual({ kind: "travelPreference", preference: "taxi" });
-    expect(parser.parse("preference walk")).toEqual({ kind: "travelPreference", preference: "foot" });
-    expect(parser.parse("prefer bus")).toEqual({ kind: "travelPreference", preference: "transit" });
     expect(parser.parse("sneak")).toEqual({ kind: "toggleStealth" });
-    expect(parser.parse("travel")).toEqual({ kind: "travelMenu" });
-    expect(parser.parse("save")).toEqual({ kind: "save" });
-    expect(parser.parse("load")).toEqual({ kind: "load" });
+    expect(parser.parse("travel")).toEqual({ kind: "unknown", raw: "travel" });
+    expect(parser.parse("go")).toEqual({ kind: "unknown", raw: "go" });
+    expect(parser.parse("travel to the corridor")).toEqual({ kind: "travel", query: "the corridor" });
   });
 
-  it("returns unknown for prefer with an unrecognized preference word", () => {
-    expect(parser.parse("prefer purple")).toEqual({ kind: "unknown", raw: "prefer purple" });
+  it("no longer knows the removed travel-preference and save/load verbs", () => {
+    for (const word of ["prefer taxi", "preference walk", "save", "load"]) {
+      expect(parser.parse(word)).toEqual({ kind: "unknown", raw: word });
+    }
   });
 
   it("returns unknown for 'panel' with an unrecognized slot, unrecognized content, or a missing slot entirely", () => {
@@ -77,12 +74,9 @@ describe("EnglishCommandParser", () => {
       "verb.unfocus.usage",
       "verb.time.usage",
       "verb.sneak.usage",
-      "verb.prefer.usage",
       "verb.notebook.usage",
       "verb.board.usage",
       "verb.jotDown.usage",
-      "verb.save.usage",
-      "verb.load.usage",
     ]);
   });
 

@@ -16,7 +16,7 @@ import { describe, expect, it, vi } from "vitest";
  * and this module's own doc comment.
  */
 
-const WORLD_YAML = "npcs: []\ntransitLines: []\npasses: []\n";
+const WORLD_YAML = "npcs: []\n";
 
 const LOCATIONS_A_YAML = `
 - id: a
@@ -50,8 +50,6 @@ const LOCATIONS_WITH_CONNECTION_YAML = `
   aliases: [a]
   connections:
     - toId: b
-      distanceKm: 1
-      modes: [foot]
   x: 0
   'y': 0
   text:
@@ -76,11 +74,7 @@ const LOCATIONS_WITH_TWO_CONNECTIONS_YAML = `
   aliases: [a]
   connections:
     - toId: b
-      distanceKm: 1
-      modes: [foot]
     - toId: b
-      distanceKm: 1
-      modes: [taxi]
   x: 0
   'y': 0
   text:
@@ -105,8 +99,6 @@ const LOCATIONS_WITH_TWO_WAY_CONNECTION_YAML = `
   aliases: [a]
   connections:
     - toId: b
-      distanceKm: 1
-      modes: [foot]
   x: 0
   'y': 0
   text:
@@ -118,8 +110,6 @@ const LOCATIONS_WITH_TWO_WAY_CONNECTION_YAML = `
   aliases: [b]
   connections:
     - toId: a
-      distanceKm: 1
-      modes: [foot]
   x: 100
   'y': 0
   text:
@@ -327,11 +317,6 @@ describe("editor — Connect flow", () => {
     await openEditorWithFixture();
     const svg = document.querySelector("svg")!;
     stubRect(svg);
-    vi.spyOn(window, "prompt").mockImplementation((message?: string) => {
-      if (message?.includes("distanceKm")) return "1";
-      if (message?.includes("modes")) return "foot";
-      return null;
-    });
 
     findButton("Connect").click();
     clickNode(svg, "a", 10, 10);
@@ -344,11 +329,6 @@ describe("editor — Connect flow", () => {
     await openEditorWithFixture();
     const svg = document.querySelector("svg")!;
     stubRect(svg);
-    vi.spyOn(window, "prompt").mockImplementation((message?: string) => {
-      if (message?.includes("distanceKm")) return "1";
-      if (message?.includes("modes")) return "foot";
-      return null;
-    });
 
     findButton("Connect").click();
     clickNode(svg, "a", 10, 10, 3);
@@ -357,7 +337,7 @@ describe("editor — Connect flow", () => {
     expect(svg.querySelectorAll(".mapview__edge")).toHaveLength(1);
   });
 
-  it("skips the distanceKm/modes prompts entirely for a real interior hop, adding a flat 0.1km/foot connection", async () => {
+  it("adds a connection without prompting for anything, whether or not interiors are involved", async () => {
     await openEditorWithFixture({ locationFiles: { "all.yaml": LOCATIONS_WITH_INTERIOR_YAML } });
     const svg = document.querySelector("svg")!;
     stubRect(svg);
@@ -366,35 +346,11 @@ describe("editor — Connect flow", () => {
     findButton("Connect").click();
     clickNode(svg, "a", 0, 0);
     clickNode(svg, "lobby", 0, 50);
-
-    expect(prompt).not.toHaveBeenCalled();
-    expect(svg.querySelectorAll(".mapview__edge")).toHaveLength(1);
-  });
-
-  it("still prompts for distanceKm/modes for an exterior-exterior connection, even though one side has interiors", async () => {
-    await openEditorWithFixture({ locationFiles: { "all.yaml": LOCATIONS_WITH_INTERIOR_YAML } });
-    const svg = document.querySelector("svg")!;
-    stubRect(svg);
-    const prompt = vi.spyOn(window, "prompt").mockImplementation((_message?: string, defaultText?: string) => defaultText ?? null);
-
-    findButton("Connect").click();
     clickNode(svg, "a", 0, 0);
     clickNode(svg, "b", 100, 0);
 
-    expect(prompt).toHaveBeenCalledWith("distanceKm:", "1");
-  });
-
-  it("still prompts for distanceKm/modes for an interior connecting to an unrelated (non-owning) exterior", async () => {
-    await openEditorWithFixture({ locationFiles: { "all.yaml": LOCATIONS_WITH_INTERIOR_YAML } });
-    const svg = document.querySelector("svg")!;
-    stubRect(svg);
-    const prompt = vi.spyOn(window, "prompt").mockImplementation((_message?: string, defaultText?: string) => defaultText ?? null);
-
-    findButton("Connect").click();
-    clickNode(svg, "lobby", 0, 50);
-    clickNode(svg, "b", 100, 0);
-
-    expect(prompt).toHaveBeenCalledWith("distanceKm:", "1");
+    expect(prompt).not.toHaveBeenCalled();
+    expect(svg.querySelectorAll(".mapview__edge")).toHaveLength(2);
   });
 });
 
@@ -403,11 +359,6 @@ describe("editor — two-way connections & grouped map lines", () => {
     const project = await openEditorWithFixture();
     const svg = document.querySelector("svg")!;
     stubRect(svg);
-    vi.spyOn(window, "prompt").mockImplementation((message?: string) => {
-      if (message?.includes("distanceKm")) return "1";
-      if (message?.includes("modes")) return "foot";
-      return null;
-    });
 
     findButton("Connect").click();
     clickNode(svg, "a", 10, 10);
@@ -425,11 +376,6 @@ describe("editor — two-way connections & grouped map lines", () => {
     const project = await openEditorWithFixture();
     const svg = document.querySelector("svg")!;
     stubRect(svg);
-    vi.spyOn(window, "prompt").mockImplementation((message?: string) => {
-      if (message?.includes("distanceKm")) return "1";
-      if (message?.includes("modes")) return "foot";
-      return null;
-    });
 
     (document.querySelector("#editor-two-way-checkbox") as HTMLInputElement).click();
     findButton("Connect").click();
@@ -444,7 +390,7 @@ describe("editor — two-way connections & grouped map lines", () => {
     expect((project.locationFileHandles["b.yaml"] as unknown as { writtenText: string | null }).writtenText).toBeNull();
   });
 
-  it("renders multiple Connections between the same pair (different modes) as a single edge", async () => {
+  it("renders multiple Connections between the same pair as a single edge", async () => {
     await openEditorWithFixture({ locationFiles: { "all.yaml": LOCATIONS_WITH_TWO_CONNECTIONS_YAML } });
     const svg = document.querySelector("svg")!;
 
@@ -604,11 +550,6 @@ describe("editor — Edit location sidebar", () => {
     await openEditorWithFixture();
     const svg = document.querySelector("svg")!;
     stubRect(svg);
-    vi.spyOn(window, "prompt").mockImplementation((message?: string) => {
-      if (message?.includes("distanceKm")) return "1";
-      if (message?.includes("modes")) return "foot";
-      return null;
-    });
 
     findButton("Connect").click();
     clickNode(svg, "a", 10, 10);
@@ -1495,8 +1436,6 @@ npcs:
         name: a witness
         description: A nervous witness.
         dialogue: I didn't see anything.
-transitLines: []
-passes: []
 `;
 
 const PREFABS_WITH_NPC_YAML = `
@@ -1651,8 +1590,6 @@ npcs:
         name: Officer Hale
         description: A patrolman.
         dialogue: "Evening."
-transitLines: []
-passes: []
 `;
 
 const NPC_WORLD_WITH_SCHEDULE_YAML = `
@@ -1672,8 +1609,6 @@ npcs:
         name: Officer Hale
         description: A patrolman.
         dialogue: "Evening."
-transitLines: []
-passes: []
 `;
 
 function npcSidebar(): HTMLElement {
@@ -1747,8 +1682,6 @@ npcs:
         name: Rosa
         description: A cook.
         dialogue: "Don't know you."
-transitLines: []
-passes: []
 `,
     });
     findButton("NPCs").click();
@@ -2076,8 +2009,6 @@ npcs:
         name: Officer Hale
         description: A patrolman.
         dialogue: "Evening."
-transitLines: []
-passes: []
 `,
     });
     findButton("NPCs").click();

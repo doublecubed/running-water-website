@@ -13,10 +13,24 @@ import { TerminalView } from "./TerminalView";
  * something GameEngine.test.ts can cover headlessly (CLAUDE.md's
  * engine/view boundary).
  */
+/** A fresh engine whose starting room has no scene image, so image tests start from a hidden pane. */
+function newEngine(): GameEngine {
+  const state = createInitialState();
+  delete state.locations[state.player.locationId]!.image;
+  return new GameEngine(state);
+}
+
+/** Moves to the main room and makes its workspace portable, then picks it up: a carried item for the inventory/board tests. */
+function takeWorkspace(engine: GameEngine): void {
+  engine.travelTo("main room");
+  engine.getState().worldObjects["workspace"]!.portable = true;
+  engine.takeItem("workspace");
+}
+
 function setUp() {
   const root = document.createElement("div");
   document.body.appendChild(root);
-  const engine = new GameEngine(createInitialState());
+  const engine = newEngine();
   const parser = new EnglishCommandParser(false);
   const view = new TerminalView(root, engine, parser, 0); // fade off — most tests assert DOM state synchronously; see "scene image fade" describe block for fade behavior itself
   const input = root.querySelector<HTMLInputElement>('[data-role="input"]')!;
@@ -132,62 +146,45 @@ describe("TerminalView — click-to-jot picking mode", () => {
 });
 
 describe("TerminalView — NPC topic menu", () => {
-  it("'talk rosa' opens a topic menu (she has topics authored in the Ledger mini-case), and 'leave it there' returns to normal dispatch", async () => {
+  it("'talk herald' opens a topic menu, selecting a topic answers and reopens it, and 'leave' returns to normal dispatch", async () => {
     const { engine, log, submit } = setUp();
-    engine.travelTo("diner");
 
-    await submit("talk rosa");
+    await submit("talk herald");
     const menu = log.querySelector(".terminal__menu");
     expect(menu).toBeTruthy();
     const optionTexts = Array.from(menu!.querySelectorAll("p")).map((p) => p.textContent);
-    expect(optionTexts).toContain("1) the ledger");
-    expect(optionTexts).toContain("2) Rosa");
-    expect(optionTexts.some((text) => text?.includes("Leave it there"))).toBe(true);
+    expect(optionTexts).toContain("1) the studio");
+    expect(optionTexts.some((text) => text?.includes("Leave"))).toBe(true);
 
     // Selecting a topic prints the answer and reopens the menu, rather than closing it.
     await submit("1");
     expect(log.querySelectorAll(".terminal__menu")).toHaveLength(2);
-    expect(log.lastElementChild?.querySelector(".terminal__line")?.textContent).toContain("Not yet");
+    expect(log.lastElementChild?.querySelector(".terminal__line")?.textContent).toContain("Underwater Games is a small studio");
 
     await submit("leave");
-    // The flow is closed (menu.clear()) — leaving stale rendered screens in the
-    // scrollback, same as every other MenuFlow consumer; what matters is the
-    // NEXT input is no longer routed to the menu.
+    // The flow is closed (menu.clear()) — what matters is the NEXT input is no longer routed to the menu.
     expect(log.lastElementChild?.classList.contains("terminal__menu")).toBe(false);
 
-    // Back to ordinary command dispatch.
-    await submit("look");
-    expect(engine.getState().player.locationId).toBe("diner");
+    await submit("go to corridor");
+    expect(engine.getState().player.locationId).toBe("studio-corridor");
   });
 
-  it("opening the topic menu still runs the NPC's own greeting/first-talk dialogue rule (e.g. Rosa's trust bump), not just a bare header", async () => {
-    // Regression test: the topic-menu branch used to hardcode the header
-    // from `listed.dialogueKey` instead of calling `engine.talkTo`, so an
-    // NPC's own first-talk dialogueRules effect (Rosa's `trust: 1`) never
-    // fired through real play — only through a headless `engine.talkTo`
-    // call, which the Ledger mini-case's playthrough test used directly
-    // and so didn't catch this. Playing the SAME sequence through the
-    // actual view (Hale vouches, then talk to Rosa) must unlock the
-    // ledger topic on the very first `talk rosa`, since that first talk
-    // is also what applies Rosa's trust bump.
-    const { engine, log, submit } = setUp();
-    engine.travelTo("precinct");
-    await submit("talk hale"); // reputation.byLabel.worker: 0 -> 1
-
-    engine.travelTo("diner");
-    await submit("talk rosa"); // opens the topic menu AND must apply Rosa's own trust: +1
-
-    await submit("1"); // select "the ledger"
-    expect(log.lastElementChild?.querySelector(".terminal__line")?.textContent).toContain("courier");
+  it("opening the topic menu still runs the NPC's own greeting/first-talk dialogue rule, not just a bare header", async () => {
+    // Regression test: the topic-menu branch used to build the header from the
+    // NPC's plain dialogue line, skipping a matching first-talk dialogueRule.
+    const { log, submit } = setUp();
+    await submit("talk herald");
+    const header = log.querySelector(".terminal__menu .terminal__line")?.textContent ?? "";
+    expect(header).toContain("Hail, traveller");
   });
 
-  it("plain 'talk' still applies when the NPC has no topics authored", async () => {
+  it("plain 'talk' still applies when the NPC has no topics offered", async () => {
     const { engine, log, submit } = setUp();
-    engine.travelTo("alley");
+    engine.getState().npcs["herald"]!.topics = [];
 
-    await submit("talk informant");
+    await submit("talk herald");
     expect(log.querySelector(".terminal__menu")).toBeNull();
-    expect(log.lastElementChild?.textContent).toContain("mutters");
+    expect(log.lastElementChild?.textContent).toContain("Hail");
   });
 });
 
@@ -204,7 +201,7 @@ describe("TerminalView — side panels", () => {
   });
 
   it("switches a slot's content via 'panel <slot> <content>', live off current engine state", async () => {
-    const { root, submit } = setUp();
+    const { root, engine, submit } = setUp();
     const left = root.querySelector<HTMLElement>('[data-role="panel-left"]')!;
 
     await submit("panel left inventory");
@@ -212,9 +209,10 @@ describe("TerminalView — side panels", () => {
     expect(left.querySelector(".side-panel__title")?.textContent).toBe("Inventory");
     expect(left.querySelectorAll("li")).toHaveLength(0);
 
-    await submit("take case file"); // any turn re-renders both panels — see TerminalView.updateStatusBar
+    takeWorkspace(engine);
+    await submit("look"); // any turn re-renders both panels — see TerminalView.updateStatusBar
 
-    expect(Array.from(left.querySelectorAll("li")).map((li) => li.textContent)).toContain("case file");
+    expect(Array.from(left.querySelectorAll("li")).map((li) => li.textContent)).toContain("the workspace");
   });
 
   it("shows learned facts, oldest-first, via 'panel <slot> facts'", async () => {
@@ -225,12 +223,14 @@ describe("TerminalView — side panels", () => {
     expect(left.querySelector(".side-panel__title")?.textContent).toBe("Facts");
     expect(left.querySelectorAll("li")).toHaveLength(0);
 
-    engine.getState().playerFacts["courier"] = { atMinutes: engine.getState().clock.minutesElapsed };
+    // A synthetic fact whose text reuses an existing locale entry ("carried").
+    engine.getState().facts["test-fact"] = { id: "test-fact", textKey: "ui.inventoryLabel" };
+    engine.getState().playerFacts["test-fact"] = { atMinutes: engine.getState().clock.minutesElapsed };
     await submit("look"); // any turn re-renders both panels — see TerminalView.updateStatusBar
 
     const items = Array.from(left.querySelectorAll("li")).map((li) => li.textContent);
     expect(items).toHaveLength(1);
-    expect(items[0]).toBe("A courier in a grey coat dropped the ledger in the alley Tuesday night.");
+    expect(items[0]).toBe("carried");
   });
 
   it("opens a menu for bare 'panel <slot>' and applies the selected content to that slot", async () => {
@@ -312,7 +312,7 @@ describe("TerminalView — case board overlay", () => {
 
   it("renders a node card with its resolved label", async () => {
     const { root, engine, submit } = setUp();
-    engine.takeItem("case file");
+    takeWorkspace(engine);
     const itemId = engine.getState().player.inventory[0]!;
     engine.addBoardNode("item", itemId, null, 100, 100);
 
@@ -320,7 +320,7 @@ describe("TerminalView — case board overlay", () => {
     const mount = root.querySelector<HTMLElement>('[data-role="board-canvas-mount"]')!;
     const card = mount.querySelector<HTMLElement>(".board-node")!;
     expect(card).toBeTruthy();
-    expect(card.querySelector(".board-node__text")?.textContent).toBe("case file");
+    expect(card.querySelector(".board-node__text")?.textContent).toBe("the workspace");
   });
 
   it("a note node shows plain text at rest, and the pencil icon enters edit mode", async () => {
@@ -350,7 +350,7 @@ describe("TerminalView — case board overlay", () => {
 
   it("a reference node (non-note) has no pencil icon", async () => {
     const { root, engine, submit } = setUp();
-    engine.takeItem("case file");
+    takeWorkspace(engine);
     const itemId = engine.getState().player.inventory[0]!;
     engine.addBoardNode("item", itemId, null, 100, 100);
 
@@ -487,7 +487,7 @@ describe("TerminalView — case board overlay", () => {
 
   it("lists an inventory item under the Item category, and adding it removes it from the list", async () => {
     const { root, engine, submit } = setUp();
-    engine.takeItem("case file");
+    takeWorkspace(engine);
     await submit("board");
     const toolbarMount = root.querySelector<HTMLElement>('[data-role="board-add-node-mount"]')!;
 
@@ -496,7 +496,7 @@ describe("TerminalView — case board overlay", () => {
     Array.from(toolbarMount.querySelectorAll<HTMLButtonElement>(".board-add-node-menu button")).find((b) => b.textContent === "Item")!.click();
     await new Promise((r) => setTimeout(r, 0));
 
-    const entityButtons = () => Array.from(toolbarMount.querySelectorAll<HTMLButtonElement>(".board-add-node-menu button")).filter((b) => b.textContent === "case file");
+    const entityButtons = () => Array.from(toolbarMount.querySelectorAll<HTMLButtonElement>(".board-add-node-menu button")).filter((b) => b.textContent === "the workspace");
     expect(entityButtons()).toHaveLength(1);
     entityButtons()[0]!.click();
     await new Promise((r) => setTimeout(r, 0));
@@ -638,7 +638,7 @@ describe("TerminalView — scene image fade transition", () => {
   function setUpWithFade(fadeDurationMs: number) {
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const engine = new GameEngine(createInitialState());
+    const engine = newEngine();
     const view = new TerminalView(root, engine, new EnglishCommandParser(false), fadeDurationMs);
     const pane = root.querySelector<HTMLElement>('[data-role="image"]')!;
     const update = () => (view as unknown as { updateStatusBar(): void }).updateStatusBar();
@@ -699,7 +699,7 @@ describe("TerminalView — scene image dither dissolve", () => {
   function setUpWithDither(ditherEnabled: boolean) {
     const root = document.createElement("div");
     document.body.appendChild(root);
-    const engine = new GameEngine(createInitialState());
+    const engine = newEngine();
     const view = new TerminalView(root, engine, new EnglishCommandParser(false), 40, ditherEnabled, 4);
     const pane = root.querySelector<HTMLElement>('[data-role="image"]')!;
     const update = () => (view as unknown as { updateStatusBar(): void }).updateStatusBar();
@@ -750,27 +750,28 @@ describe("TerminalView — scene image dither dissolve", () => {
 describe("TerminalView — examine-driven scene image", () => {
   const paneSrc = (root: HTMLElement) => root.querySelector<HTMLImageElement>('[data-role="image"] img')?.getAttribute("src") ?? null;
 
-  it("swaps the pane to an examined object's image, follows its state changes, and restores on back", async () => {
-    const { root, submit } = setUp(); // starts in the office, which has no location image
+  it("swaps the pane to an examined object's image and restores the room's image on back", async () => {
+    const { root, engine, submit } = setUp();
     const pane = root.querySelector<HTMLElement>('[data-role="image"]')!;
     expect(pane.hidden).toBe(true);
 
-    await submit("examine desk");
-    expect(pane.hidden).toBe(false);
-    expect(paneSrc(root)).toContain("desk-drawer-open.svg"); // right drawer starts open
+    await submit("go to main room");
+    expect(paneSrc(root)).toContain("studio-general.jpg");
 
-    await submit("close right drawer");
-    expect(paneSrc(root)).toContain("desk-drawer-closed.svg");
+    await submit("examine whiteboard");
+    expect(paneSrc(root)).toContain("studio-whiteboard.jpg");
+    expect(engine.getSceneImage()?.src).toBe("studio-whiteboard.jpg");
 
     await submit("back");
-    expect(pane.hidden).toBe(true);
+    expect(paneSrc(root)).toContain("studio-general.jpg");
   });
 
-  it("runs a hotspot on the object image like typed input and re-renders the new state's image", async () => {
+  it("runs a hotspot on the object image like typed input and re-renders the room's image", async () => {
     const { root, submit } = setUp();
-    await submit("examine desk");
-    root.querySelector<HTMLButtonElement>(".scene-image__hotspot[aria-label='Close the right drawer']")!.click();
+    await submit("go to main room");
+    await submit("examine whiteboard");
+    root.querySelector<HTMLButtonElement>(".scene-image__hotspot[aria-label='Step back']")!.click();
     await new Promise((r) => setTimeout(r, 0));
-    expect(paneSrc(root)).toContain("desk-drawer-closed.svg");
+    expect(paneSrc(root)).toContain("studio-general.jpg");
   });
 });

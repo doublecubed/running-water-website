@@ -14,8 +14,6 @@
   aliases: [landing, the landing, entrance, lobby, reception]
   connections:
     - toId: studio-corridor
-      distanceKm: 0.01
-      modes: [foot]
   itemIds: [reception-desk]
   npcIds: [herald]
   x: 420
@@ -55,8 +53,6 @@
   aliases: [main room, studio, main]
   connections:
     - toId: studio-corridor
-      distanceKm: 0.01
-      modes: [foot]
   itemIds: [workspace, computer-desk, whiteboard]
   x: 420
   'y': 305
@@ -106,23 +102,11 @@
   aliases: [corridor, hallway, hall]
   connections:
     - toId: studio-landing
-      distanceKm: 0.01
-      modes: [foot]
     - toId: studio-mainroom
-      distanceKm: 0.01
-      modes: [foot]
     - toId: studio-pressroom
-      distanceKm: 0.01
-      modes: [foot]
     - toId: studio-mailroom
-      distanceKm: 0.01
-      modes: [foot]
     - toId: studio-meetingroom
-      distanceKm: 0.01
-      modes: [foot]
     - toId: studio-breakroom
-      distanceKm: 0.01
-      modes: [foot]
   x: 630
   'y': 310
   text:
@@ -176,8 +160,6 @@
   aliases: [press room, press]
   connections:
     - toId: studio-corridor
-      distanceKm: 0.01
-      modes: [foot]
   x: 880
   'y': 205
   text:
@@ -203,8 +185,6 @@
   aliases: [meeting room, meeting, conference room]
   connections:
     - toId: studio-corridor
-      distanceKm: 0.01
-      modes: [foot]
   x: 880
   'y': 310
   text:
@@ -231,8 +211,6 @@
   aliases: [mail room, mail, post room]
   connections:
     - toId: studio-corridor
-      distanceKm: 0.01
-      modes: [foot]
   x: 880
   'y': 100
   text:
@@ -259,11 +237,7 @@
   aliases: [break room, break]
   connections:
     - toId: studio-corridor
-      distanceKm: 0.01
-      modes: [foot]
     - toId: studio-archive
-      distanceKm: 0.01
-      modes: [foot]
   x: 420
   'y': 645
   text:
@@ -296,8 +270,6 @@
   aliases: [archive, the archive, basement]
   connections:
     - toId: studio-breakroom
-      distanceKm: 0.01
-      modes: [foot]
   itemIds: [cabinet]
   x: 420
   'y': 805
@@ -335,8 +307,6 @@
   aliases: [waiting room, waiting]
   connections:
     - toId: studio-corridor
-      distanceKm: 0.01
-      modes: [foot]
   x: 880
   'y': 415
   text:
@@ -361,8 +331,6 @@
   aliases: [bathroom, restroom, toilet]
   connections:
     - toId: studio-corridor
-      distanceKm: 0.01
-      modes: [foot]
   x: 880
   'y': 520
   text:

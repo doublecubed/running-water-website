@@ -95,7 +95,7 @@ Both are explicit v1 scope decisions, not oversights:
   An out-of-range value is rejected at Save via the shared `notice`
   banner, using each key's `STAT_DEFINITIONS[key].min`/`.max` directly.
 - **Save**: `Player.stats?` is the reason `SAVE_SCHEMA_VERSION` bumped
-  from 7 to 8 — see `docs/systems/save.md`'s "Versioning" section, and
+  from 7 to 8 — see the (removed) save system, and
   the new `migrate()` function this system introduced (the first real
   migration in the codebase; a schema-7 save simply has no `stats` key,
   which is already valid, so no numeric backfill was needed).

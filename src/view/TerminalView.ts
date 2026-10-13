@@ -1,11 +1,9 @@
 import { DEFAULT_IMAGE_DITHER_STEPS, DEFAULT_IMAGE_FADE_DURATION_MS, renderImagePane } from "./imagePane";
-import { loadCityContent } from "../content/world";
 import { defaultNodePosition } from "../engine/board/board";
 import type { GameEngine } from "../engine/GameEngine";
 import { blockActiveText, blockActiveTextLength, charsRemaining, charsUsed } from "../engine/notebooks";
 import type { Command, PanelContentId, PanelSlot } from "../engine/parsing/Command";
 import type { ICommandParser } from "../engine/parsing/ICommandParser";
-import { buildStateFromSave, serializeState } from "../engine/save/save";
 import type { ActionResult, BoardNode, BoardStringColor, GameEvent, Notebook, NoteBlock, Page, ResolutionChoice, WorldObjectId } from "../engine/types";
 import { formatCalendarDate } from "../i18n/calendarFormat";
 import { t } from "../i18n/resolver";
@@ -21,8 +19,6 @@ import { buildDisambiguationScreen } from "./menu/disambiguationMenus";
 import { buildJotDownPickerScreen, openNotebookCommand } from "./menu/notebookMenus";
 import { buildTopicsScreen } from "./menu/npcMenus";
 import { buildPanelMenuScreen } from "./menu/panelMenus";
-import { buildDirectConnectionsScreen } from "./menu/travelMenus";
-import { loadFromStorage, saveToStorage } from "./save/browserSaveStore";
 import { minutesSinceEpoch } from "./wallClock";
 
 /**
@@ -418,14 +414,6 @@ export class TerminalView {
       this.updateStatusBar();
       return;
     }
-    if (command.kind === "travelMenu") {
-      this.engine.clearFocus(); // opening the travel menu is a "universal" action that breaks focus — see docs/systems/parts.md.
-      const screen = buildDirectConnectionsScreen(this.engine);
-      this.menu.start(screen);
-      this.renderMenuScreen(screen);
-      this.updateStatusBar();
-      return;
-    }
     if (command.kind === "buyMenu") {
       const screen = buildBuyMenuScreen(this.engine);
       this.menu.start(screen);
@@ -749,9 +737,8 @@ export class TerminalView {
   /**
    * Makes the status-bar clock follow the visitor's real local time: syncs the
    * engine immediately, then re-syncs every `intervalMs` (cheap; 15 s keeps the
-   * minute display from lagging). Only meaningful for an engine built with
-   * `externalClock` — otherwise travel would advance the clock too and be
-   * overwritten on the next tick. Returns a stop function.
+   * minute display from lagging). The engine's clock only moves via `syncClock`, so
+   * this is the single source of time. Returns a stop function.
    */
   startWallClock(intervalMs = 15_000): () => void {
     const tick = (): void => {
@@ -1284,16 +1271,16 @@ export class TerminalView {
   }
 
   /**
-   * `command` is never `{ kind: "travelMenu" }`/`{ kind: "buyMenu" }`/
+   * `command` is never `{ kind: "buyMenu" }`/
    * `{ kind: "panelMenu" }`/`{ kind: "notebook" }`/`{ kind: "jotDownPick" }`/
    * `{ kind: "jotDown" }` here — handleSubmit intercepts all of those before
-   * dispatch is called: the first four because opening a menu (or entering
+   * dispatch is called: the first three because opening a menu (or entering
    * the click-to-jot picker) isn't a plain ActionResult, and `jotDown`
    * because resolving which notebook to write to (possibly prompting)
    * is handled by `submitJotDown`.
    */
   private dispatch(
-    command: Exclude<Command, { kind: "travelMenu" | "buyMenu" | "panelMenu" | "notebook" | "jotDownPick" | "jotDown" }>,
+    command: Exclude<Command, { kind: "buyMenu" | "panelMenu" | "notebook" | "jotDownPick" | "jotDown" }>,
     raw: string,
   ): ActionResult {
     switch (command.kind) {
@@ -1303,18 +1290,6 @@ export class TerminalView {
         return this.engine.travelTo(command.query);
       case "time":
         return this.engine.checkTime();
-      case "travelPreference":
-        if (command.preference) return this.engine.setTravelPreference(command.preference);
-        return {
-          ok: true,
-          events: [
-            {
-              type: "travel_preference_checked",
-              textKey: "event.travelPreferenceChecked",
-              params: { preferenceKey: `preference.${this.engine.getTravelPreference()}` },
-            },
-          ],
-        };
       case "take":
         return this.engine.takeItem(command.query);
       case "buy":
@@ -1348,11 +1323,6 @@ export class TerminalView {
         if (this.boardOverlayEl.hidden) this.showBoard();
         else this.hideBoard();
         return { ok: true, events: [] };
-      case "save":
-        saveToStorage(serializeState(this.engine.getState()));
-        return { ok: true, events: [{ type: "game_saved", textKey: "event.gameSaved" }] };
-      case "load":
-        return this.loadGame();
       case "devAddMoney":
         return this.engine.addMoney(command.amountMinor);
       case "devToggleAllLocations":
@@ -1367,34 +1337,6 @@ export class TerminalView {
   }
 
   /**
-   * Loads the one save slot, if any, replacing the engine's current state
-   * wholesale via `GameEngine.loadState` — see docs/systems/save.md. Pairs
-   * the saved mutable slice with FRESH static content (`loadCityContent()`),
-   * never the content the engine happened to already be holding, since a
-   * loaded save is meant to reflect the on-disk content as it is now, not
-   * as it was at some earlier point in this session. Re-runs `look()`
-   * afterward so the player sees where the loaded game actually left them,
-   * same as `start()` does for a new game.
-   */
-  private loadGame(): ActionResult {
-    const data = loadFromStorage();
-    if (!data) {
-      return { ok: false, events: [{ type: "no_save_found", textKey: "event.noSaveFound" }] };
-    }
-    let state;
-    try {
-      state = buildStateFromSave(loadCityContent(), data);
-    } catch {
-      return { ok: false, events: [{ type: "save_incompatible", textKey: "event.saveIncompatible" }] };
-    }
-    this.engine.loadState(state);
-    return {
-      ok: true,
-      events: [{ type: "game_loaded", textKey: "event.gameLoaded" }, ...this.engine.look().events],
-    };
-  }
-
-  /**
    * Walks the engine's event list and prints each one. Printing is instant
    * today, but every event is awaited individually so a future animated
    * view can insert a delay (e.g. `await playAnimation(event)`) per event
@@ -1403,8 +1345,7 @@ export class TerminalView {
    *
    * If this batch actually changed the player's location — a
    * `player_moved`/`player_traveled` event is present — a horizontal
-   * divider is printed FIRST, before any event in the batch (including a
-   * preceding `money_spent` charge for the trip), so the whole action
+   * divider is printed FIRST, before any event in the batch so the whole action
    * that caused the move reads as one clearly bounded group in the log.
    * Checked once per batch rather than per individual event: a plain
    * `look` (which also emits a `location_described` event, just never a

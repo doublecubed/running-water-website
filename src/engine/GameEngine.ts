@@ -2,12 +2,10 @@ import { addConnection, addNode, editNoteText, listAddableEntities, moveNode, re
 import type { AddableEntity } from "./board/board";
 import { formatMoneyParts } from "./economy/money";
 import { blockActiveTextLength, charsRemaining, charsUsed, commitBlockEdit, generateNotebookId, toNoteTimestamp } from "./notebooks";
-import type { Route } from "./navigation/pathfinding";
-import { findCategoryRoute, findRoute, pickModeForCategory, TRAVEL_CATEGORIES } from "./navigation/pathfinding";
-import { hopMinutesAndCost } from "./navigation/transportModes";
+import { findPath } from "./navigation/pathfinding";
 import { containedWorldObjectsIn, npcsAtLocation, worldObjectsAtLocation } from "./placement";
 import type { CalendarDate } from "./time/calendar";
-import { calendarDisplayParams, minutesUntilDayAlignedExpiry, toCalendarDate } from "./time/calendar";
+import { calendarDisplayParams, toCalendarDate } from "./time/calendar";
 import { resolveDifficultyCheck } from "./checks/checks";
 import { evaluateCondition } from "./npc/conditions";
 import { applyDialogueEffects } from "./npc/effects";
@@ -37,36 +35,14 @@ import type {
   NpcId,
   Part,
   PartState,
-  Pass,
   ResolutionChoice,
   SceneImage,
   StatKey,
   TopicId,
-  TransportMode,
-  TravelCategory,
-  TravelChoice,
-  TravelStrategy,
   VisibilityTier,
   WorldObject,
   WorldObjectId,
 } from "./types";
-
-/** Optional override for travelTo, used to execute a specific option a player selected from a prior inquireTravel — see docs/systems/economy.md's Stage 4. At most one of `mode`/`category`/`strategy` ever applies, per which resolution path travelTo takes (compass vs named destination) and which UI produced the choice; the others are ignored. */
-export interface TravelOverride {
-  /** Forces this exact mode on the compass-resolved connection, instead of pickModeForCategory(state, connection, travelPreference). Ignored (falls back to normal resolution) if the connection doesn't actually list this mode — defensive against a stale choice from before content/state changed. */
-  mode?: TransportMode;
-  /** Forces this exact travel category for a named-destination route, instead of the player's standing travelPreference. Does NOT change travelPreference itself — this is a one-trip override. */
-  category?: TravelCategory;
-  /**
-   * Forces the LEGACY mixed-mode strategy search (findRoute) for a
-   * named-destination route, instead of the category-based
-   * findCategoryRoute every other path uses. Not reachable through
-   * ordinary `inquire`/`travel` today — reserved for a future "navigator
-   * device" item that shows the true mixed-mode fastest/cheapest routes.
-   * See TravelStrategy's doc comment in types.ts.
-   */
-  strategy?: TravelStrategy;
-}
 
 const DIRECTION_WORDS: readonly Direction[] = ["north", "south", "east", "west", "up", "down", "in", "out"];
 
@@ -88,34 +64,14 @@ export class GameEngine {
    * deterministic skill-check assertions instead of mocking
    * `Math.random` globally; production code never needs to pass one.
    */
-  /**
-   * `options.externalClock` hands ownership of the clock to the caller: in-game
-   * actions (travel, ...) stop advancing `minutesElapsed` and the view feeds it
-   * via `syncClock` instead (the website shows real wall-clock time). Default
-   * `false` keeps the simulated clock every existing test relies on.
-   */
   constructor(
     private state: GameState,
     private rng: () => number = Math.random,
-    private options: { externalClock?: boolean } = {},
   ) {}
 
   /** Read-only snapshot access for views that need to render current state (e.g. inventory panel). */
   getState(): Readonly<GameState> {
     return this.state;
-  }
-
-  /**
-   * Replaces the engine's ENTIRE state wholesale — the one path a save/load
-   * feature uses to swap in a freshly-loaded `GameState` (see
-   * `engine/save/save.ts`'s `buildStateFromSave` and docs/systems/save.md).
-   * No action method mutates `state` this way; this exists specifically so
-   * a view can keep the same `GameEngine` instance across a load rather
-   * than reconstructing one, which would otherwise mean re-wiring every
-   * reference to it.
-   */
-  loadState(state: GameState): void {
-    this.state = state;
   }
 
   getCurrentLocation(): Location {
@@ -132,10 +88,9 @@ export class GameEngine {
    * is THE time display now (see docs/systems/time.md for why the
    * earlier relative "Day N" format was dropped entirely rather than
    * kept alongside it) and also what content/logic needing a real date
-   * reads (e.g. "this newspaper is dated 20 September 1946", or a pass's
-   * expiry — see `buyPass`). Turning this into display text is
-   * src/i18n/calendarFormat.ts's/`calendarDisplayParams`'s job, never the
-   * engine's.
+   * reads (e.g. "this newspaper is dated 20 September 1946").
+   * Turning this into display text is src/i18n/calendarFormat.ts's/
+   * `calendarDisplayParams`'s job, never the engine's.
    */
   getCalendarDate(): CalendarDate {
     return toCalendarDate(this.state.clock.epoch, this.state.clock.minutesElapsed);
@@ -316,27 +271,17 @@ export class GameEngine {
 
   /**
    * Resolves `query` to a destination and travels there — see
-   * docs/systems/navigation.md for the two resolution paths this
-   * implements:
+   * docs/systems/navigation.md for the two resolution paths:
    *  1. A compass word (north/south/...) matches a Connection's
-   *     compassLabel on the CURRENT location — travels that exact
-   *     connection, honoring the player's explicit directional choice
-   *     even if a faster route exists elsewhere.
+   *     compassLabel on the CURRENT location — travels that exact connection.
    *  2. Anything else is matched against every location's name aliases
-   *     across the whole map, then reached via Dijkstra shortest-time
-   *     pathfinding (findRoute) — this is the "go to the docks" case,
-   *     which may involve multiple hops and mixed transport modes.
-   *
-   * `override` lets a caller execute a SPECIFIC option — e.g. one the
-   * player picked from a prior `inquireTravel` — instead of the default
-   * resolution (pickModeForCategory by travelPreference, for compass;
-   * travelPreference itself, for named destinations). See TravelOverride
-   * and docs/systems/economy.md. Re-deriving the result from `query` +
-   * `override` rather than replaying a stored Route keeps this call fully
-   * self-contained and deterministic — see ActionResult.choices's doc
-   * comment on why no "pending choice" is kept engine-side.
+   *     across the whole map, then reached by the fewest-hops path
+   *     (`findPath`) — the "go to the archive" case, which may cross
+   *     several rooms. The player ends up at the destination in one step
+   *     (the intermediate rooms are not visited or described).
+   * Travel has no time, distance or cost.
    */
-  travelTo(query: string, override?: TravelOverride): ActionResult {
+  travelTo(query: string): ActionResult {
     const needle = query.trim().toLowerCase();
     if (!needle) {
       return { ok: false, events: [{ type: "location_not_found", textKey: "event.locationNotFound", params: { query } }] };
@@ -349,12 +294,7 @@ export class GameEngine {
       if (!connection) {
         return { ok: false, events: [{ type: "move_blocked", textKey: "event.moveBlocked", params: { direction: needle } }] };
       }
-      const requestedMode = override?.mode;
-      const mode =
-        requestedMode && connection.modes.includes(requestedMode)
-          ? requestedMode
-          : pickModeForCategory(this.state, connection, this.state.player.travelPreference);
-      return this.executeHop(current.id, connection, mode);
+      return this.executeHop(current.id, connection);
     }
 
     const destination = this.findLocationByAlias(needle);
@@ -365,190 +305,23 @@ export class GameEngine {
       return { ok: true, events: [{ type: "already_there", textKey: "event.alreadyThere", params: { locationKey: destination.nameKey } }] };
     }
 
-    // A legacy strategy override (see TravelOverride.strategy) runs the
-    // mixed-mode search instead — reserved for a future "navigator
-    // device," not reachable from ordinary inquire/travel today.
-    const route = override?.strategy
-      ? findRoute(this.state, current.id, destination.id, override.strategy)
-      : findCategoryRoute(this.state, current.id, destination.id, override?.category ?? this.state.player.travelPreference);
-    if (!route) {
+    const path = findPath(this.state, current.id, destination.id);
+    if (!path) {
       return { ok: false, events: [{ type: "route_not_found", textKey: "event.routeNotFound", params: { locationKey: destination.nameKey } }] };
     }
-
-    const charge = this.chargeForTravel(route.totalCostMinor);
-    if (charge && !charge.ok) return charge; // Insufficient funds — nothing moved, no time spent.
 
     const firstVisit = !this.state.player.visitedLocationIds.includes(destination.id);
     this.observeDeparture(current.id);
     this.moveTo(destination.id);
     this.clearFocus(); // traveling is a "universal" action that breaks focus — see docs/systems/parts.md.
-    this.advanceClock(route.totalMinutes);
+    syncNpcLocations(this.state);
     const events: GameEvent[] = [
-      ...(charge?.events ?? []),
-      {
-        type: "player_traveled",
-        textKey: "event.playerTraveled",
-        params: {
-          locationKey: destination.nameKey,
-          hops: String(route.hops.length),
-          minutes: String(route.totalMinutes),
-        },
-      },
+      { type: "player_traveled", textKey: "event.playerTraveled", params: { locationKey: destination.nameKey } },
       ...this.describeLocation(this.getCurrentLocation(), { includeDescription: firstVisit }),
       ...(this.state.player.stealthMode ? this.rerollConcealment() : []),
-      this.describeTime("event.timeChecked"),
     ];
     this.observeArrival(destination.id); // After the concealment re-roll above, so bystanders judge the NEW roll.
     return { ok: true, events };
-  }
-
-  /**
-   * Executes travel along a SPECIFIC connection from the current
-   * location, identified by its destination id rather than a fuzzy
-   * name/alias match — used by the direct-connections menu (see
-   * docs/systems/economy.md's bare-`travel` menu), which already knows
-   * exactly which `Connection` it means from `listDirectConnections` and
-   * shouldn't have to round-trip through `travelTo`'s alias resolution.
-   */
-  travelToConnection(toId: LocationId, override?: TravelOverride): ActionResult {
-    const current = this.getCurrentLocation();
-    const connection = current.connections.find((c) => c.toId === toId);
-    if (!connection) {
-      const destination = this.state.locations[toId];
-      return {
-        ok: false,
-        events: [{ type: "route_not_found", textKey: "event.routeNotFound", params: { locationKey: destination?.nameKey ?? toId } }],
-      };
-    }
-    const requestedMode = override?.mode;
-    const mode =
-      requestedMode && connection.modes.includes(requestedMode)
-        ? requestedMode
-        : pickModeForCategory(this.state, connection, this.state.player.travelPreference);
-    return this.executeHop(current.id, connection, mode);
-  }
-
-  /**
-   * Lists every direct connection from the current location, each
-   * summarized using the mode `Player.travelPreference` would pick —
-   * the "what can I reach right now, and how" overview behind the bare
-   * `travel` command's menu (see docs/systems/economy.md). Choices have
-   * `kind: "destination"`; selecting one means
-   * `travelToConnection(choice.id)`. A malformed connection with no
-   * usable mode is skipped rather than crashing, same as pathfinding
-   * does elsewhere.
-   */
-  listDirectConnections(): ActionResult {
-    const current = this.getCurrentLocation();
-    const choices = current.connections
-      .map((connection) => this.destinationChoice(current.id, connection))
-      .filter((choice): choice is TravelChoice => choice !== null);
-    return {
-      ok: true,
-      events: [
-        {
-          type: "direct_connections_header",
-          textKey: "event.directConnectionsHeader",
-        },
-        {
-          type: "direct_connections_intro",
-          textKey: "event.directConnectionsIntro",
-          params: { preferenceKey: `preference.${this.state.player.travelPreference}` },
-        },
-      ],
-      choices,
-    };
-  }
-
-  /**
-   * Reports travel options to a destination WITHOUT executing any of them
-   * — the player's location, clock, and money are all untouched. Mirrors
-   * `travelTo`'s two resolution paths (see its doc comment); the content
-   * of the report, returned as `choices` (not events — see
-   * ActionResult.choices), differs by which path resolved:
-   *  1. Compass word — the destination is already fixed (that one
-   *     connection), so choices are per-MODE (`kind: "mode"`): one per
-   *     transport mode that connection lists, each with its own
-   *     time/cost. Selecting one means `travelTo(query, { mode })`.
-   *  2. Named destination — choices are per natural travel CATEGORY
-   *     (`kind: "category"`, one per `TRAVEL_CATEGORIES`): `findCategoryRoute`
-   *     is run once per category (foot/transit/taxi), and every category
-   *     that reaches the destination at all gets its own option — see
-   *     docs/systems/economy.md for why these aren't merged/deduped even
-   *     when two categories happen to resolve to the same underlying
-   *     route. Whichever option(s) have the lowest total time/cost are
-   *     labeled "(fastest)"/"(cheapest)" (a tie can label more than one).
-   *     The player's preferred category is listed first (annotated
-   *     "(preferred)"), the rest follow in `TRAVEL_CATEGORIES` order.
-   *     Selecting one means `travelTo(query, { category })`.
-   * A view is expected to render `choices` as a numbered list and, on
-   * the player's next input, call `travelTo` with the corresponding
-   * override — see docs/systems/economy.md and TerminalView's handling.
-   * Each choice's `aliases` (its category id, plus "fastest"/"cheapest"
-   * when earned) let a view accept those words directly, not just a
-   * number.
-   */
-  inquireTravel(query: string): ActionResult {
-    const needle = query.trim().toLowerCase();
-    if (!needle) {
-      return { ok: false, events: [{ type: "location_not_found", textKey: "event.locationNotFound", params: { query } }] };
-    }
-
-    const current = this.getCurrentLocation();
-
-    if (DIRECTION_WORDS.includes(needle as Direction)) {
-      const connection = current.connections.find((c) => c.compassLabel === needle);
-      if (!connection) {
-        return { ok: false, events: [{ type: "move_blocked", textKey: "event.moveBlocked", params: { direction: needle } }] };
-      }
-      const destination = this.state.locations[connection.toId];
-      return {
-        ok: true,
-        events: [this.inquiryHeaderEvent(destination?.nameKey ?? connection.toId)],
-        choices: connection.modes.map((mode) => this.modeChoice(current.id, connection, mode)),
-      };
-    }
-
-    const destination = this.findLocationByAlias(needle);
-    if (!destination) {
-      return { ok: false, events: [{ type: "location_not_found", textKey: "event.locationNotFound", params: { query } }] };
-    }
-    if (destination.id === current.id) {
-      return { ok: true, events: [{ type: "already_there", textKey: "event.alreadyThere", params: { locationKey: destination.nameKey } }] };
-    }
-
-    // The player's preferred category is resolved first and listed first
-    // (see docs/systems/economy.md) — the rest follow in TRAVEL_CATEGORIES
-    // order.
-    const preference = this.state.player.travelPreference;
-    const orderedCategories = [preference, ...TRAVEL_CATEGORIES.filter((category) => category !== preference)];
-    const routesByCategory = orderedCategories.map((category) => ({
-      category,
-      route: findCategoryRoute(this.state, current.id, destination.id, category),
-    })).filter((entry): entry is { category: TravelCategory; route: Route } => entry.route !== null);
-
-    if (routesByCategory.length === 0) {
-      return { ok: false, events: [{ type: "route_not_found", textKey: "event.routeNotFound", params: { locationKey: destination.nameKey } }] };
-    }
-
-    const fastestMinutes = Math.min(...routesByCategory.map(({ route }) => route.totalMinutes));
-    const cheapestCostMinor = Math.min(...routesByCategory.map(({ route }) => route.totalCostMinor));
-    const choices = routesByCategory.map(({ category, route }) =>
-      this.categoryChoice(category, route, route.totalMinutes === fastestMinutes, route.totalCostMinor === cheapestCostMinor),
-    );
-
-    const events = [this.inquiryHeaderEvent(destination.nameKey)];
-    // "foot" minimizes COST, not purity (see CATEGORY_OPTIMIZES_FOR) — it
-    // can legitimately include a forced non-foot hop where there's simply
-    // no walking alternative at all. Flag that explicitly rather than
-    // silently labeling a partly-ridden route "foot" — see
-    // docs/systems/economy.md.
-    const footRoute = routesByCategory.find((entry) => entry.category === "foot")?.route;
-    if (footRoute?.hops.some((hop) => hop.mode !== "foot")) {
-      events.push({ type: "foot_route_not_fully_walkable", textKey: "event.footRouteNotFullyWalkable" });
-    }
-
-    return { ok: true, events, choices };
   }
 
   /** Take by typed alias — may come back ambiguous, see `resolveWorldObjectQuery`. */
@@ -597,26 +370,6 @@ export class GameEngine {
     return this.state.player.visitedLocationIds;
   }
 
-  /** The player's current default travel category — a read-only getter, mirroring getMoney. */
-  getTravelPreference(): TravelCategory {
-    return this.state.player.travelPreference;
-  }
-
-  /** Changes the player's default travel category. Always succeeds. See docs/systems/economy.md. */
-  setTravelPreference(preference: TravelCategory): ActionResult {
-    this.state.player.travelPreference = preference;
-    return {
-      ok: true,
-      events: [
-        {
-          type: "travel_preference_set",
-          textKey: "event.travelPreferenceSet",
-          params: { preferenceKey: `preference.${preference}` },
-        },
-      ],
-    };
-  }
-
   /** Credits the player's balance. Always succeeds — earning money has no failure mode today. */
   addMoney(amountMinor: number): ActionResult {
     this.state.player.money += amountMinor;
@@ -630,9 +383,9 @@ export class GameEngine {
    * Debits the player's balance, refusing (without touching the balance)
    * if it would go negative — the check happens BEFORE any mutation, not
    * as a try-then-rollback. This is the dedicated charging primitive:
-   * `travelTo` calls it (via `chargeForTravel`) to charge for paid travel,
-   * and it's general enough for any future purchase (an item, a bribe,
-   * ...) to reuse the same way. See docs/systems/economy.md.
+   * `buyNotebook` calls it, and it's general enough for any future
+   * purchase (an item, a bribe, ...) to reuse the same way. See
+   * docs/systems/economy.md.
    */
   spendMoney(amountMinor: number): ActionResult {
     if (amountMinor > this.state.player.money) {
@@ -658,50 +411,8 @@ export class GameEngine {
   }
 
   /**
-   * Buys the Pass named by `query` (alias-matched, like `takeItem`/
-   * `talkTo`) if the player can afford it — `spendMoney`'s "check
-   * beforehand" pattern again: nothing is added if the charge fails.
-   * Expiry is computed via `minutesUntilDayAlignedExpiry`, so a pass
-   * always lapses at a day boundary rather than a fixed number of
-   * minutes from purchase — see that function's doc comment. Buying a
-   * pass while a still-valid one for the same line(s) is already active
-   * is allowed — it just adds a second `ActivePass`; `costOfMode` only
-   * needs ANY currently-valid entry covering a line, so overlapping
-   * coverage is harmless, not an error.
-   */
-  /** Buys a specific Pass directly by id — the follow-up call the generalized buy menu makes (see view/menu/buyMenu.ts), which already knows exactly which Pass it means and shouldn't have to round-trip through alias matching. */
-  buyPass(target: { id: string }): ActionResult;
-  buyPass(query: string): ActionResult;
-  buyPass(target: string | { id: string }): ActionResult {
-    const pass = typeof target === "string" ? this.findPassByAlias(target) : this.state.passes[target.id];
-    if (!pass) {
-      return { ok: false, events: [{ type: "pass_not_found", textKey: "event.passNotFound", params: { query: typeof target === "string" ? target : target.id } }] };
-    }
-
-    const charge = this.spendMoney(pass.priceMinor);
-    if (!charge.ok) return charge;
-
-    const expiresAtMinutesElapsed =
-      this.state.clock.minutesElapsed + minutesUntilDayAlignedExpiry(this.state.clock.minutesElapsed, pass.durationDays);
-    this.state.player.activePasses.push({ passId: pass.id, expiresAtMinutesElapsed });
-
-    const expiry = toCalendarDate(this.state.clock.epoch, expiresAtMinutesElapsed);
-    return {
-      ok: true,
-      events: [
-        ...charge.events,
-        {
-          type: "pass_purchased",
-          textKey: "event.passPurchased",
-          params: { passKey: pass.nameKey, ...calendarDisplayParams(expiry) },
-        },
-      ],
-    };
-  }
-
-  /**
    * Buys the NotebookProduct named by `query` (alias-matched, like
-   * `buyPass`) if the player can afford it. Creates a brand-new, unnamed
+   * `takeItem`/`talkTo`) if the player can afford it. Creates a brand-new, unnamed
    * `Notebook` (see `Notebook.name`'s doc comment — free player text, not
    * set here) with `product.pageCount` blank pages, each carrying the
    * product's `charCapacity`. Does NOT make it the active
@@ -1144,8 +855,6 @@ export class GameEngine {
    * LAST part (authored order) whose CURRENT state has one, else the
    * object's own `image`; for an NPC, its `image`. A thing with no image
    * falls through to the location's, so the pane never blanks mid-scene.
-   * Part state is saved but `examinedTarget` isn't, so after a load the
-   * location image shows until the player examines something again.
    */
   getSceneImage(): SceneImage | undefined {
     const target = this.state.examinedTarget;
@@ -1170,68 +879,35 @@ export class GameEngine {
     return this.state.focusedWorldObjectId ? this.state.worldObjects[this.state.focusedWorldObjectId] : undefined;
   }
 
-  /** Executes a single, explicitly-chosen connection (the compass fast path) at the given mode — charges for it, advances the clock, and moves the player exactly one hop, using THIS connection's time cost, not whatever pathfinding might consider faster. `mode` is resolved by the caller (travelTo), which decides between the player's preference and any explicit override. */
-  private executeHop(fromId: string, connection: Connection, mode: TransportMode | undefined): ActionResult {
+  /** Executes a single, explicitly-chosen connection (the compass fast path) and moves the player exactly one hop. */
+  private executeHop(fromId: string, connection: Connection): ActionResult {
     const destination = this.state.locations[connection.toId];
     if (!destination) {
       throw new Error(`Connection from "${fromId}" points to unknown location "${connection.toId}"`);
     }
-    const { minutes, cost } = mode ? hopMinutesAndCost(this.state, fromId, connection, mode) : { minutes: 0, cost: 0 };
-
-    const charge = this.chargeForTravel(cost);
-    if (charge && !charge.ok) return charge; // Insufficient funds — nothing moved, no time spent.
 
     const firstVisit = !this.state.player.visitedLocationIds.includes(destination.id);
     this.observeDeparture(fromId);
     this.moveTo(destination.id);
     this.clearFocus(); // traveling is a "universal" action that breaks focus — see docs/systems/parts.md.
-    this.advanceClock(minutes);
+    syncNpcLocations(this.state);
     const events: GameEvent[] = [
-      ...(charge?.events ?? []),
       { type: "player_moved", textKey: "event.playerMoved", params: { direction: connection.compassLabel ?? "" } },
       ...this.describeLocation(this.getCurrentLocation(), { includeDescription: firstVisit }),
       ...(this.state.player.stealthMode ? this.rerollConcealment() : []),
-      this.describeTime("event.timeChecked"),
     ];
     this.observeArrival(destination.id);
     return { ok: true, events };
   }
 
   /**
-   * Charges the player for a leg of travel, if it costs anything — the
-   * "check beforehand" pattern this whole feature was built around:
-   * `spendMoney` refuses without mutating the balance if unaffordable, so
-   * calling it here BEFORE `travelTo`/`executeHop` touch location or
-   * clock means an unaffordable trip fails cleanly with nothing partially
-   * applied. Returns null (nothing to report, proceed silently) when
-   * `costMinor` is 0 — otherwise every free walk would print a "you spend
-   * $0.00" line. Returns `spendMoney`'s ActionResult otherwise: on
-   * success, its `money_spent` event is meant to be prepended to the
-   * travel result's own events; on failure (`ok: false`), the CALLER must
-   * return it immediately, unchanged.
-   */
-  private chargeForTravel(costMinor: number): ActionResult | null {
-    if (costMinor <= 0) return null;
-    return this.spendMoney(costMinor);
-  }
-
-  /**
-   * The only place `GameState.clock.minutesElapsed` is mutated. Also the
-   * single hook that re-syncs scheduled NPCs to where their routine says
-   * they are NOW — see docs/systems/npcs.md's "Schedules". There is still
-   * no per-tick loop: sync happens exactly when time actually moves.
-   */
-  private advanceClock(minutes: number): void {
-    if (!this.options.externalClock) this.state.clock.minutesElapsed += minutes;
-    syncNpcLocations(this.state);
-  }
-
-  /**
-   * Sets `clock.minutesElapsed` outright, for a caller that owns real time
-   * (see the `externalClock` constructor option). Takes plain minutes since
-   * the clock's epoch so the engine never touches `Date` itself — converting
-   * wall-clock time into that number is the view layer's job. Re-syncs
-   * scheduled NPCs, exactly like an in-game advance.
+   * Sets `clock.minutesElapsed` outright — the ONLY way the clock moves; the
+   * caller owns real time. Takes plain minutes since the clock's epoch so the
+   * engine never touches `Date` itself — converting wall-clock time into that
+   * number is the view layer's job. Also re-syncs scheduled NPCs to where
+   * their routine says they are at the new time (see docs/systems/npcs.md's
+   * "Schedules"). There is no per-tick loop: sync happens when time is set
+   * and when the player moves.
    */
   syncClock(minutesElapsed: number): void {
     this.state.clock.minutesElapsed = minutesElapsed;
@@ -1352,126 +1028,8 @@ export class GameEngine {
     return { [`${prefix}Sign`]: sign, [`${prefix}Major`]: major, [`${prefix}Minor`]: minor };
   }
 
-  private inquiryHeaderEvent(destinationNameKey: string): GameEvent {
-    return { type: "inquiry_header", textKey: "event.inquiryHeader", params: { locationKey: destinationNameKey } };
-  }
-
-  /** One selectable choice for a single connection's mode — used by the compass-word inquiry path, where the destination (and thus the connection) is already fixed. `id` is the mode itself, echoed back to travelTo's `override.mode`. Always included regardless of affordability — see affordabilityParams. `aliases` lets a view accept the mode's own name as a selection word too, not just a number. */
-  private modeChoice(fromId: LocationId, connection: Connection, mode: TransportMode): TravelChoice {
-    const { minutes, cost } = hopMinutesAndCost(this.state, fromId, connection, mode);
-    return {
-      id: mode,
-      kind: "mode",
-      textKey: "event.routeOptionByMode",
-      params: {
-        modeKey: `mode.${mode}.name`,
-        minutes: String(minutes),
-        ...this.moneyEventParams("cost", cost),
-        ...this.affordabilityParams(cost),
-      },
-      aliases: [mode],
-    };
-  }
-
-  /**
-   * One selectable choice for a whole resolved route under a given
-   * natural travel category (foot/transit/taxi) — used by the
-   * named-destination inquiry path. `id` is the category itself, echoed
-   * back to travelTo's `override.category`. Always included regardless
-   * of affordability — see affordabilityParams. `isFastest`/`isCheapest`
-   * (computed by the caller by comparing every category's route — see
-   * inquireTravel) drive the "(fastest)"/"(cheapest)" prefix badges,
-   * shown at the START of the line per docs/systems/economy.md; a
-   * separate "(preferred)" suffix note still marks whichever category
-   * matches the player's standing travelPreference, same as before.
-   * `aliases` lets a view accept the category name, and "fastest"/
-   * "cheapest" when earned, as selection words — not just a number.
-   */
-  private categoryChoice(category: TravelCategory, route: Route, isFastest: boolean, isCheapest: boolean): TravelChoice {
-    const aliases = [category as string];
-    if (isFastest) aliases.push("fastest");
-    if (isCheapest) aliases.push("cheapest");
-    return {
-      id: category,
-      kind: "category",
-      textKey: "event.routeOptionByCategory",
-      params: {
-        categoryKey: `preference.${category}`,
-        minutes: String(route.totalMinutes),
-        hops: String(route.hops.length),
-        modesKey: this.routeModesKey(route),
-        ...this.moneyEventParams("cost", route.totalCostMinor),
-        ...this.affordabilityParams(route.totalCostMinor),
-        fastestNote: isFastest ? "ui.fastestOption" : "",
-        cheapestNote: isCheapest ? "ui.cheapestOption" : "",
-        preferredNote: category === this.state.player.travelPreference ? "ui.preferredOption" : "",
-      },
-      aliases,
-    };
-  }
-
-  /**
-   * A ", "-joined list of `mode.*.name` keys for a route's hops, one entry
-   * per CHANGE of mode (consecutive hops on the same mode collapse to one
-   * entry) — e.g. a route that walks out of a building, rides a taxi, then
-   * walks into another collapses to "on foot, by taxi, on foot" rather
-   * than repeating "on foot" for every 1-minute interior hop. `t()`
-   * resolves each key and joins the result — see resolver.ts's ", "-joined
-   * list support (the same mechanism used for inventory item lists).
-   */
-  private routeModesKey(route: Route): string {
-    const modes: TransportMode[] = [];
-    for (const hop of route.hops) {
-      if (modes[modes.length - 1] !== hop.mode) modes.push(hop.mode);
-    }
-    return modes.map((mode) => `mode.${mode}.name`).join(", ");
-  }
-
-  /** One selectable choice for a direct connection, using the mode `Player.travelPreference` would pick for it — used by `listDirectConnections`. `id` is the destination's LocationId, echoed back to `travelToConnection`. Returns null for a malformed connection with no usable mode (skipped by the caller). */
-  private destinationChoice(fromId: LocationId, connection: Connection): TravelChoice | null {
-    const mode = pickModeForCategory(this.state, connection, this.state.player.travelPreference);
-    if (!mode) return null;
-    const destination = this.state.locations[connection.toId];
-    const { minutes, cost } = hopMinutesAndCost(this.state, fromId, connection, mode);
-    return {
-      id: connection.toId,
-      kind: "destination",
-      textKey: "event.directConnectionOption",
-      params: {
-        locationKey: destination?.nameKey ?? connection.toId,
-        modeKey: `mode.${mode}.name`,
-        minutes: String(minutes),
-        ...this.moneyEventParams("cost", cost),
-        ...this.affordabilityParams(cost),
-      },
-    };
-  }
-
-  /**
-   * `inquireTravel` shows every option regardless of whether the player
-   * can afford it — this only ANNOTATES a choice, it never filters one
-   * out. `afford` resolves to nothing when affordable, or to
-   * `ui.cannotAfford` (a note including the player's current balance)
-   * when not — see en.ts's use of {afford} in the route-option templates
-   * and the resolver's recursive key resolution (the nested key reuses
-   * these same params, so its own {balanceSign}/{balanceMajor}/{balanceMinor}
-   * placeholders resolve too). See docs/systems/economy.md.
-   */
-  private affordabilityParams(costMinor: number): Record<string, string> {
-    const canAfford = costMinor <= this.state.player.money;
-    return {
-      afford: canAfford ? "" : "ui.cannotAfford",
-      ...this.moneyEventParams("balance", this.state.player.money),
-    };
-  }
-
   private findLocationByAlias(needle: string): Location | undefined {
     return Object.values(this.state.locations).find((location) => location.aliases.includes(needle));
-  }
-
-  private findPassByAlias(query: string): Pass | undefined {
-    const needle = query.trim().toLowerCase();
-    return Object.values(this.state.passes).find((pass) => pass.aliases.includes(needle));
   }
 
   /**

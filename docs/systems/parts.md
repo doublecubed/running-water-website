@@ -71,7 +71,7 @@ a state whose full text is already short enough to serve both purposes.
 
 `GameState` carries two new fields:
 - `partStates: Record<WorldObjectId, Record<PartId, string>>` — current
-  state id per object/part. **Persisted** (see `docs/systems/save.md`) —
+  state id per object/part. **Persisted** (see the (removed) save system) —
   mirrors `Placement` exactly: seeded from every part's `defaultStateId`
   by `cityLoader.ts` (`CityContent.initialPartStates`), restored verbatim
   on load. A part added to content after a save was made simply falls
@@ -184,7 +184,7 @@ location's `nameKey` — rendered via `"ui.disambiguationOption"`
 (carried)"). `src/view/menu/disambiguationMenus.ts`'s
 `buildDisambiguationScreen` turns these into a one-shot `MenuFlow`
 "choices" screen (see `docs/systems/menu.md`), the same pattern
-`travelMenus.ts` uses for `TravelChoice` — `TerminalView`'s
+the other menu domains use — `TerminalView`'s
 `WORLD_OBJECT_RESOLVERS` table decides, per `Command.kind`, how to
 re-issue the verb that produced the ambiguity once a choice is made.
 
