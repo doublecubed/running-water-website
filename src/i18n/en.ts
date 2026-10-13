@@ -16,6 +16,11 @@ export const en: Record<string, string> = {
   "ui.help":
     'Try: look, go <place or direction>, take <item>, talk to <npc>, examine <thing>, inventory, time, buy, notebook, jot down <text> (or "jot down last" to jot what you just read, or bare "jot down" to click a line in the log). Type "verbs" to toggle the full verb list.',
   "ui.verbsPanelTitle": "Known verbs",
+  "ui.verbHint.goTo": "go to <place>",
+  "ui.verbHint.examine": "examine <thing>",
+  "ui.verbHint.talkTo": "talk to <someone>",
+  "ui.verbHint.open": "open <thing>",
+  "ui.verbHint.close": "close <thing>",
   "ui.locationsPanelTitle": "Known locations",
   "ui.inventoryPanelTitle": "Inventory",
   "ui.factsPanelTitle": "Facts",

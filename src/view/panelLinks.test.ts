@@ -26,3 +26,22 @@ describe("locations panel links", () => {
     expect(engine.getState().player.locationId).toBe("studio-landing");
   });
 });
+
+/** The verbs panel is fixed chrome under the locations panel, outside the switchable slot registry. */
+describe("verbs panel", () => {
+  it("lists the five starter verbs and survives a re-render", async () => {
+    const root = document.createElement("div");
+    document.body.appendChild(root);
+    const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+    new TerminalView(root, engine, new EnglishCommandParser(false), 0);
+    const items = () => Array.from(root.querySelectorAll('[data-role="panel-verbs"] li')).map((li) => li.textContent);
+    const expected = ["go to <place>", "examine <thing>", "talk to <someone>", "open <thing>", "close <thing>"];
+    expect(items()).toEqual(expected);
+
+    const input = root.querySelector<HTMLInputElement>('[data-role="input"]')!;
+    input.value = "look";
+    input.dispatchEvent(new KeyboardEvent("keydown", { key: "Enter" }));
+    await new Promise((r) => setTimeout(r, 0));
+    expect(items()).toEqual(expected);
+  });
+});

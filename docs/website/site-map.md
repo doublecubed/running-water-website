@@ -46,6 +46,13 @@ system later (news and hints in character).
   hotspots), so it follows existing connections and can never skip a lock.
   Only visited rooms are listed, so unexplored rooms stay hidden.
 
+- Menu options (dialogue topics, disambiguation, etc.) are buttons; a click is the
+  same as typing the option's number. Older menus go inert once replaced.
+
+- Side panels are fixed size (locations and inventory share one height, sized for
+  10 rows). A "Known verbs" guide (go to, examine, talk to, open, close) sits
+  under the locations panel; add verbs to `VERB_HINT_KEYS` as the site needs them.
+
 ## Clock
 
 The status bar shows the visitor's real local date and time, ticking in real

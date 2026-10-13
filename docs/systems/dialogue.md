@@ -173,6 +173,16 @@ becomes the new screen's `header`, and rebuilding the option list from
 answer itself just caused (e.g. an opinion-gated topic's answer changing
 once a threshold is crossed within the same conversation).
 
+### Clicking instead of typing (added 2026-10-13)
+
+Every choices screen renders its options as `button.terminal__menu-option`
+elements (`TerminalView.renderMenuScreen`), so topic menus (and travel, buy,
+disambiguation and panel menus, which share `MenuFlow`) can be clicked. A click
+is exactly the player typing the option's number: a delegated listener in
+`handleLogClick` calls `runInput(String(n))`. Buttons of any menu block that
+is no longer the live screen are disabled (`retireStaleMenus`) so a stale
+click cannot index into a different screen. View-only; no engine change.
+
 ## How it interacts with other systems
 
 - **NPCs** (`docs/systems/npcs.md`): supplies the `Condition` evaluator and

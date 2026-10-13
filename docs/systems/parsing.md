@@ -75,6 +75,15 @@ language's own rules — it does not touch `EnglishCommandParser`, the
 
 ## Side panels (verbs, locations, inventory, facts — switchable content)
 
+**Website layout (2026-10-13):** the left and right slots are fixed-height boxes
+(`.side-panel--fixed`, sized for `--side-panel-rows` = 10 list rows) so they
+never resize with their contents; the inventory slot matches the locations slot.
+Under the left slot sits a separate, always-on verb guide (`data-role="panel-verbs"`,
+`VERB_HINT_KEYS` in `TerminalView.ts`): go to, examine, talk to, open, close. It
+is not part of the switchable registry and is distinct from the `verbs` content
+below, which lists the parser's whole vocabulary as a debug aid.
+
+
 `TerminalView` has two fixed-side panel slots — LEFT and RIGHT — whose
 CONTENT is player-selectable, not tied to the slot itself (sides are
 fixed for now; see the "Why sides are fixed" note below). Each slot

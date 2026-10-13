@@ -61,6 +61,19 @@ function renderSidePanel(titleKey: string, items: Array<string | { label: string
 }
 
 /**
+ * The verb guide under the locations panel: a short, curated list for visitors
+ * new to text adventures — deliberately NOT the parser's full vocabulary (that
+ * is the debug `verbs` panel content). Grow it as the site needs more verbs.
+ */
+const VERB_HINT_KEYS = ["ui.verbHint.goTo", "ui.verbHint.examine", "ui.verbHint.talkTo", "ui.verbHint.open", "ui.verbHint.close"] as const;
+
+/** The hints contain literal "<place>"-style placeholders, so they must be escaped before going through innerHTML. */
+function renderVerbHints(): string {
+  const escape = (text: string): string => text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return renderSidePanel("ui.verbsPanelTitle", VERB_HINT_KEYS.map((key) => escape(t(key))));
+}
+
+/**
  * A placeholder ascii motif shown by the `closed` panel content — a stand-in
  * for future actual art (a location sketch, a case-relevant image, ...).
  * Deliberately tiny/generic for now; swapping it (or making it vary, e.g.
@@ -188,6 +201,8 @@ export class TerminalView {
   private readonly notebookNewBlockButton: HTMLButtonElement;
   /** The active multi-screen menu, if any (e.g. the bare-`travel` flow) — see menu/MenuFlow.ts. */
   private readonly menu = new MenuFlow();
+  /** The DOM block of the menu screen currently accepting input; every earlier block's option buttons are disabled (retireStaleMenus). */
+  private liveMenuBlock: HTMLElement | null = null;
   /** Whether the locations panel shows every location (dev-only `devlocations` toggle) instead of just `Player.visitedLocationIds` — see SIDE_PANELS.locations. */
   private showAllLocations = false;
   /** Which content the left/right side-panel slots currently show — sides are fixed, content is player-selectable via `setPanel`. See SIDE_PANELS and Command.ts's PanelContentId doc. */
@@ -237,7 +252,10 @@ export class TerminalView {
   ) {
     this.root.innerHTML = `
       <div class="layout">
-        <aside class="side-panel" data-role="panel-left"></aside>
+        <div class="side-column">
+          <aside class="side-panel side-panel--fixed" data-role="panel-left"></aside>
+          <aside class="side-panel" data-role="panel-verbs"></aside>
+        </div>
         <div class="terminal">
           <div class="terminal__status-bar">
             <span class="terminal__clock" data-role="clock"></span>
@@ -254,7 +272,7 @@ export class TerminalView {
             <input class="terminal__input" data-role="input" type="text" autocomplete="off" spellcheck="false" />
           </div>
         </div>
-        <aside class="side-panel" data-role="panel-right"></aside>
+        <aside class="side-panel side-panel--fixed" data-role="panel-right"></aside>
       </div>
       <div class="world-map-overlay" data-role="world-map-overlay" hidden>
         <div class="world-map-overlay__toolbar">
@@ -295,6 +313,7 @@ export class TerminalView {
     this.stageEl = this.root.querySelector('[data-role="stage"]')!;
     this.logToggleEl = this.root.querySelector('[data-role="log-toggle"]')!;
     this.inputEl = this.root.querySelector('[data-role="input"]')!;
+    this.root.querySelector('[data-role="panel-verbs"]')!.innerHTML = renderVerbHints();
     this.panelEls = {
       left: this.root.querySelector('[data-role="panel-left"]')!,
       right: this.root.querySelector('[data-role="panel-right"]')!,
@@ -574,6 +593,13 @@ export class TerminalView {
    * picking mode so the player can just try a different line.
    */
   private handleLogClick(event: MouseEvent): void {
+    // A menu option is a click shortcut for typing its number: same path, so
+    // echo, back/exit handling and status refresh all behave identically.
+    const option = event.target instanceof Element ? event.target.closest<HTMLButtonElement>(".terminal__menu-option") : null;
+    if (option) {
+      if (!option.disabled) void this.runInput(option.dataset.option ?? "").then(() => this.updateStatusBar());
+      return;
+    }
     if (!this.jotPicking) return;
     const target = event.target instanceof Element ? event.target.closest<HTMLElement>(".terminal__line") : null;
     if (!target) return;
@@ -601,6 +627,28 @@ export class TerminalView {
    * a choices screen expects a bare number. See menu/MenuFlow.ts.
    */
   private async handleMenuInput(raw: string): Promise<void> {
+    try {
+      await this.routeMenuInput(raw);
+    } finally {
+      this.retireStaleMenus();
+    }
+  }
+
+  /**
+   * Disables the option buttons of every menu block that is no longer the
+   * live screen (replaced by a later screen, or the menu has ended). A click
+   * on one would otherwise index into a different screen's options.
+   */
+  private retireStaleMenus(): void {
+    const live = this.menu.isActive ? this.liveMenuBlock : null;
+    for (const block of Array.from(this.logEl.querySelectorAll<HTMLElement>(".terminal__menu"))) {
+      if (block === live) continue;
+      block.classList.add("terminal__menu--spent");
+      for (const button of Array.from(block.querySelectorAll<HTMLButtonElement>(".terminal__menu-option"))) button.disabled = true;
+    }
+  }
+
+  private async routeMenuInput(raw: string): Promise<void> {
     const lower = raw.toLowerCase();
     if (lower === "exit" || lower === "cancel") {
       this.menu.clear();
@@ -685,12 +733,20 @@ export class TerminalView {
       screen.options.forEach((option, index) => {
         const line = document.createElement("p");
         line.className = "terminal__line";
-        line.textContent = `${index + 1}) ${t(option.textKey, option.params)}`;
+        // A button, not bare text, so the option can be clicked as well as typed (see handleLogClick).
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "terminal__menu-option";
+        button.dataset.option = String(index + 1);
+        button.textContent = `${index + 1}) ${t(option.textKey, option.params)}`;
+        line.appendChild(button);
         container.appendChild(line);
       });
     }
 
+    this.liveMenuBlock = container;
     this.logEl.appendChild(container);
+    this.retireStaleMenus();
     this.logEl.scrollTop = this.logEl.scrollHeight;
   }
 

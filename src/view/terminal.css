@@ -205,6 +205,25 @@ body {
   font-size: 0.85em;
 }
 
+/* Panels that must not resize with their contents: sized for a full list (--side-panel-rows entries) so the layout never jumps. Locations and inventory share it. */
+.layout {
+  --side-panel-rows: 10;
+}
+
+.side-panel--fixed {
+  box-sizing: border-box;
+  /* padding (2 x 1rem) + 2px border + title block (~0.9em line + 0.5rem gap) + rows x list line-height (1.6em). */
+  height: calc(2rem + 2px + 1.5em + 0.5rem + var(--side-panel-rows) * 1.6em);
+  overflow-y: auto;
+}
+
+.side-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+  flex-shrink: 0;
+}
+
 .side-panel__title {
   margin: 0 0 0.5rem 0;
   font-size: 0.9em;
@@ -915,4 +934,32 @@ body {
   color: var(--fg);
   text-decoration: underline;
   outline: 1px solid var(--dim);
+}
+
+/* Menu options are click shortcuts for typing the option number. */
+.terminal__menu-option {
+  all: unset;
+  display: block;
+  box-sizing: border-box;
+  /* Bleed to the menu box's inner edges (its padding is 1rem) so the highlight is a whole row. */
+  width: calc(100% + 2rem);
+  margin: 0 -1rem;
+  padding: 0 1rem;
+  cursor: pointer;
+  color: inherit;
+}
+
+/* Inverse-video highlight: text takes the background colour, the row takes the text colour. */
+.terminal__menu-option:hover:not(:disabled),
+.terminal__menu-option:focus-visible {
+  background: var(--fg);
+  color: var(--bg);
+}
+
+.terminal__menu-option:disabled {
+  cursor: default;
+}
+
+.terminal__menu--spent {
+  opacity: 0.6;
 }
