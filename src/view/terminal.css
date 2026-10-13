@@ -78,13 +78,8 @@ body {
   color: var(--accent);
 }
 
-.terminal__money {
-  color: var(--money);
-}
-
+/* The current-location label sits at the status bar's right end (where the money display used to be). */
 .terminal__location {
-  font-size: 0.85em;
-  letter-spacing: 0.03em;
   color: var(--fg);
 }
 

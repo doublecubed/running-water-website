@@ -24,7 +24,7 @@ npcs:
             dialogue: >-
               {npcKey} unrolls the scroll. "Underwater Games is a small studio.
               Nothing here is under water, which we consider a clever name. The
-              main room beyond that door is where the work happens."
+              main room, down the corridor beyond that door, is where the work happens."
       - id: site
         text:
           en:
@@ -43,7 +43,7 @@ npcs:
           been cut out of a tarot card. He holds a scroll and looks eager to help.
         dialogue: >-
           {npcKey} bows. "Hail again! Ask me anything, or step through the door to
-          the main room."
+          the corridor."
 transitLines: []
 passes: []
 notebookProducts:

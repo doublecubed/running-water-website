@@ -1,7 +1,6 @@
 import { DEFAULT_IMAGE_DITHER_STEPS, DEFAULT_IMAGE_FADE_DURATION_MS, renderImagePane } from "./imagePane";
 import { loadCityContent } from "../content/world";
 import { defaultNodePosition } from "../engine/board/board";
-import { formatMoneyParts } from "../engine/economy/money";
 import type { GameEngine } from "../engine/GameEngine";
 import { blockActiveText, blockActiveTextLength, charsRemaining, charsUsed } from "../engine/notebooks";
 import type { Command, PanelContentId, PanelSlot } from "../engine/parsing/Command";
@@ -172,7 +171,6 @@ const SIDE_PANELS: Record<PanelContentId, PanelContent> = {
  */
 export class TerminalView {
   private readonly clockEl: HTMLElement;
-  private readonly moneyEl: HTMLElement;
   private readonly locationEl: HTMLElement;
   private readonly imageEl: HTMLElement;
   private readonly logEl: HTMLElement;
@@ -259,9 +257,8 @@ export class TerminalView {
         <div class="terminal">
           <div class="terminal__status-bar">
             <span class="terminal__clock" data-role="clock"></span>
-            <span class="terminal__money" data-role="money"></span>
+            <span class="terminal__location" data-role="location"></span>
           </div>
-          <div class="terminal__location" data-role="location"></div>
           <div class="terminal__stage" data-role="stage">
             <div class="terminal__image" data-role="image" hidden></div>
             <button type="button" class="terminal__log-toggle terminal__log-toggle--active" data-role="log-toggle" aria-expanded="false" title="${t("ui.logToggleHint")}" hidden>${t("ui.logModeCollapsed")}</button>
@@ -306,7 +303,6 @@ export class TerminalView {
       </div>
     `;
     this.clockEl = this.root.querySelector('[data-role="clock"]')!;
-    this.moneyEl = this.root.querySelector('[data-role="money"]')!;
     this.locationEl = this.root.querySelector('[data-role="location"]')!;
     this.imageEl = this.root.querySelector('[data-role="image"]')!;
     this.logEl = this.root.querySelector('[data-role="log"]')!;
@@ -768,8 +764,9 @@ export class TerminalView {
   }
 
   /**
-   * Refreshes the always-visible clock (top-left), money (top-right), and
-   * current-location line — together, "when it is and where we are" —
+   * Refreshes the always-visible clock (top-left) and current-location label
+   * (top-right) — together, "when it is and where we are". The money display
+   * was dropped from the website; the engine still tracks money —
    * plus the locations side panel (its "discovered" filter needs to grow
    * as the player visits new places). All from current engine state.
    * Called after every turn rather than only after actions known to
@@ -784,9 +781,6 @@ export class TerminalView {
     // to the current date via formatCalendarDate, not through the
     // resolver's own {word} substitution.
     this.clockEl.textContent = formatCalendarDate(this.engine.getCalendarDate(), t("ui.clockDisplay"));
-
-    const { sign, major, minor } = formatMoneyParts(this.engine.getMoney());
-    this.moneyEl.textContent = t("ui.moneyDisplay", { sign, major, minor });
 
     this.locationEl.textContent = t("ui.locationDisplay", { locationKey: this.engine.getCurrentLocation().nameKey });
 

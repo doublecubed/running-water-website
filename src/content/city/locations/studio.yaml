@@ -3,7 +3,7 @@
 # old city sample, which the website doesn't want. Exits are plain
 # connections (one per direction); a one-way connection is a one-way door.
 #
-# Layout: Landing -> Main Room -> Corridor -> (Press, Mail, Meeting, Break).
+# Layout: Landing -> Corridor -> (Main Room, Press, Mail, Meeting, Break).
 # The Break Room leads down to the Archive. Waiting Room and Bathroom have no
 # inbound connection yet (reserved for the puzzle). Every room's image ends
 # with a full-width bottom strip hotspot that backs out to the previous room.
@@ -13,7 +13,7 @@
   kind: exterior
   aliases: [landing, the landing, entrance, lobby, reception]
   connections:
-    - toId: studio-mainroom
+    - toId: studio-corridor
       distanceKm: 0.01
       modes: [foot]
   itemIds: [reception-desk]
@@ -25,7 +25,7 @@
       name: The Landing
       description: >-
         The entrance of Underwater Games: a beige wall, a reception desk with a
-        monitor nobody is using, and a door leading deeper into the studio. A
+        monitor nobody is using, and a door leading to the corridor. A
         young man in very old-fashioned clothes stands by the desk, holding a
         scroll.
   image:
@@ -36,8 +36,8 @@
     hotspots:
       - text:
           en:
-            label: Go through the door to the Main Room
-        command: go to main room
+            label: Go through the door to the Corridor
+        command: go to corridor
         rect: [5.3, 20.3, 20.2, 69.9]
       - text:
           en:
@@ -54,9 +54,6 @@
   kind: exterior
   aliases: [main room, studio, main]
   connections:
-    - toId: studio-landing
-      distanceKm: 0.01
-      modes: [foot]
     - toId: studio-corridor
       distanceKm: 0.01
       modes: [foot]
@@ -70,8 +67,8 @@
         This is the main room of Underwater Games. It's funny, because nothing
         is under water here. You see two desks ahead, one with a computer and
         one with a clutter of papers on it. To the left is a whiteboard in front
-        of a window. A door on the right leads out to the corridor, and the way
-        back to the landing is behind you.
+        of a window. A door on the right leads out to the corridor, the way you
+        came in.
   image:
     src: studio-general.jpg
     text:
@@ -100,14 +97,17 @@
         rect: [86, 0, 14, 90]
       - text:
           en:
-            label: Back to the Landing
-        command: go to landing
+            label: Back to the Corridor
+        command: go to corridor
         rect: [0, 90, 100, 10]
 
 - id: studio-corridor
   kind: exterior
   aliases: [corridor, hallway, hall]
   connections:
+    - toId: studio-landing
+      distanceKm: 0.01
+      modes: [foot]
     - toId: studio-mainroom
       distanceKm: 0.01
       modes: [foot]
@@ -130,7 +130,7 @@
       name: Corridor
       description: >-
         A long beige corridor with a green tiled floor and doors on both sides.
-        On the left, an open doorway leads back to the main room, and a door
+        Behind you is the door to the landing. On the left, an open doorway leads to the main room, and a door
         further along leads to the meeting room. The press room and the mail room
         are on the right. At the far end is a door that does not quite belong
         to the building. It leads to the break room.
@@ -167,8 +167,8 @@
         rect: [81, 9, 9.5, 81]
       - text:
           en:
-            label: Back to the Main Room
-        command: go to main room
+            label: Back to the Landing
+        command: go to landing
         rect: [0, 90, 100, 10]
 
 - id: studio-pressroom

@@ -26,6 +26,15 @@ describe("studio first slice", () => {
 });
 
 describe("studio room structure", () => {
+  it("leads from the landing to the corridor, with the main room off the corridor", () => {
+    const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
+    const landing = engine.getState().locations["studio-landing"]!;
+    expect(landing.connections.map((c) => c.toId)).toEqual(["studio-corridor"]);
+    expect(engine.travelTo("corridor").ok).toBe(true);
+    expect(engine.travelTo("main room").ok).toBe(true);
+    expect(engine.getState().locations["studio-mainroom"]!.connections.map((c) => c.toId)).toEqual(["studio-corridor"]);
+  });
+
   it("routes the main room's exits through the corridor", () => {
     const engine = new GameEngine(createInitialState(), Math.random, { externalClock: true });
     engine.travelTo("main room");

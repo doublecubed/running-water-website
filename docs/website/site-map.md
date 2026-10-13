@@ -12,9 +12,9 @@ old city sample). Content: `src/content/city/locations/studio.yaml`; objects:
 
 | Room (id) | Real page | Art | Exits |
 |---|---|---|---|
-| The Landing (`studio-landing`, **start**) | Entry, how the site works | `studio-entrance.jpg` | Main Room |
-| Main Room (`studio-mainroom`) | Hub: computer = current project, whiteboard = other projects, workspace = blog posts | `studio-general.jpg` | Landing (bottom strip), Corridor (right bar) |
-| Corridor (`studio-corridor`) | Navigation hub | `studio-corridor.jpg` | Main (left doorway), Meeting (left door), Press and Mail (right doors), Break (far-end door; broken-geometry graphic to be added) |
+| The Landing (`studio-landing`, **start**) | Entry, how the site works | `studio-entrance.jpg` | Corridor (door beside the desk) |
+| Main Room (`studio-mainroom`) | Hub: computer = current project, whiteboard = other projects, workspace = blog posts | `studio-general.jpg` | Corridor (right bar and bottom strip) |
+| Corridor (`studio-corridor`) | Navigation hub | `studio-corridor.jpg` | Landing (bottom strip), Main (left doorway), Meeting (left door), Press and Mail (right doors), Break (far-end door; broken-geometry graphic to be added) |
 | Press Room | Press kit (empty on purpose, giant press) | `studio-pressroom.jpg` | Corridor |
 | Meeting Room | About us (team as crayon drawings) | `studio-meetingroom.jpg` | Corridor |
 | Mail Room | Contact + mailing list | `studio-mailroom.jpg` | Corridor |
@@ -55,7 +55,7 @@ system later (news and hints in character).
 
 ## Clock
 
-The status bar shows the visitor's real local date and time, ticking in real
+The status bar shows the current room name at its right end (the money display was removed from the page; the engine still tracks money) and the visitor's real local date and time, ticking in real
 time. `GameEngine` takes `{ externalClock: true }` (travel no longer advances
 time); `TerminalView.startWallClock()` feeds `GameEngine.syncClock(minutes)` from
 `view/wallClock.ts` every 15 s. The engine never reads `Date`.

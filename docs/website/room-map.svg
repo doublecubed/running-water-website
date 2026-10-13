@@ -23,7 +23,7 @@
 
   <!-- Two-way connections (solid) -->
   <g stroke="#2b2b2b" stroke-width="4" fill="none" stroke-linecap="round">
-    <line x1="420" y1="350" x2="420" y2="420"/>
+    <line x1="520" y1="465" x2="590" y2="465"/>
     <line x1="520" y1="305" x2="590" y2="305"/>
     <line x1="670" y1="100" x2="780" y2="100"/>
     <line x1="670" y1="205" x2="780" y2="205"/>
@@ -33,7 +33,7 @@
 
   <!-- Door markers -->
   <g fill="#c98a2b" stroke="#2b2b2b" stroke-width="1.5">
-    <rect x="412" y="379" width="16" height="12" rx="2"/>
+    <rect x="547" y="457" width="12" height="16" rx="2"/>
     <rect x="547" y="297" width="12" height="16" rx="2"/>
     <rect x="719" y="92" width="12" height="16" rx="2"/>
     <rect x="719" y="197" width="12" height="16" rx="2"/>
@@ -99,7 +99,7 @@
   </g>
 
   <!-- Door annotation -->
-  <text x="555" y="285" text-anchor="middle" font-size="13" font-style="italic" fill="#2b2b2b">new door, right wall</text>
+  <text x="555" y="445" text-anchor="middle" font-size="13" font-style="italic" fill="#2b2b2b">door beside the desk</text>
 
   <!-- Start marker -->
   <line x1="248" y1="465" x2="316" y2="465" stroke="#2b7a4b" stroke-width="4" stroke-linecap="round" marker-end="url(#arrowGreen)"/>
