@@ -154,7 +154,7 @@ jsdom covers DOM structure and event wiring, not layout. Outstanding
 checklists, highest value first:
 
 1. `docs/image-pane-manual-tests-plan.md` — the fixed panel size, log
-   cropping and hover-expand were built and tested in jsdom only; confirm
+   and cropping were built and tested in jsdom only; confirm
    no browser scrollbar, hotspots line up with the picture, and the log
    stays on the newest line as it shrinks.
 2. `docs/case-board-manual-tests-plan.md` — drag persistence across

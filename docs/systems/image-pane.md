@@ -73,7 +73,7 @@ and so the engine can later be forked into a studio website reusing it.
 - Placeholder art: `desk.svg`, `desk-drawer-open.svg`, `desk-drawer-closed.svg`
   on the office desk's right drawer.
 
-## Layout: fixed panel, cropped log, hover-expand
+## Layout: fixed panel, cropped log
 
 - **Fixed-size panel.** `.terminal__image` has a fixed height
   (`--image-panel-height`, `clamp(160px, 35vh, 360px)`, defined on
@@ -91,23 +91,11 @@ and so the engine can later be forked into a studio website reusing it.
   image the log takes the whole stage.
 - **Scroll pinning.** Shrinking the log doesn't move `scrollTop`, which would
   crop the newest lines. A `ResizeObserver` (skipped where absent, i.e.
-  jsdom) re-pins the log to the bottom on height changes, but only if it
+  jsdom) (`pinLogToBottomOnResize`) re-pins the log to the bottom on height changes, but only if it
   was already at the bottom.
-- **Expanding the log.** With an image showing, the log can overlay it via
-  `.terminal__log--expanded` (absolute overlay anchored to the bottom, so
-  nothing reflows), covering all but the top quarter of the image panel so
-  hotspots there stay reachable. A toggle button (`.terminal__log-toggle`,
-  top-right of the stage) cycles three modes on click, in order: **Auto** —
-  hovering the log expands it, leaving collapses after 250 ms to avoid edge
-  flicker; **Expanded** — always overlays the image, no hover needed (the
-  touch/keyboard route, since hover doesn't exist on phones); **Collapsed**
-  (default) — never overlays, hover does nothing. The button's label
-  shows the current mode (`ui.logModeAuto` / `ui.logModeExpanded` /
-  `ui.logModeCollapsed`) and gets a `.terminal__log-toggle--active` style
-  when pinned to Expanded or Collapsed; its `title` is the fixed hint
-  `ui.logToggleHint`. `aria-expanded` reflects whether the log is actually
-  overlaying right now, not the mode. Typing does not change the mode. The
-  toggle is inert (hidden) while no image shows.
+- **The log is never expandable.** An expand/overlay mode (hover, plus a
+  toggle button) existed and was removed for the website: visitors don't need
+  scrollback and the overlay covered the image.
 - **Authoring in the editor.** Locations, world objects, part states and
   NPCs each get an "Edit image…" button (the object form has one for the
   object itself plus one inside each part state's block) opening a popup

@@ -309,8 +309,7 @@ I don't know if a traditional combat system with HP and hit chances etc would ma
 
 ## Image pane follow-ups
 
-`docs/systems/image-pane.md` covers what shipped (fixed panel, hover/toggle
-log expansion, examine/state-driven images, the map editor's authoring
+`docs/systems/image-pane.md` covers what shipped (fixed panel, examine/state-driven images, the map editor's authoring
 popup, the fade-to-blank transition). Not built:
 
 - **Dithering — shipped as a transition effect** (a stepped pixel dissolve

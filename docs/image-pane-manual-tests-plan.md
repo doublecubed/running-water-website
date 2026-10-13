@@ -20,17 +20,8 @@ Companion to `docs/systems/image-pane.md`; vitest covers wiring, not layout.
       gives the log the full height back.
 - [ ] A small image is centered at natural size with padding; a large one is
       scaled down. Hotspots still line up in both cases.
-- [ ] Hovering the log expands it over the image (top strip of the image
-      stays visible); moving the pointer out collapses it after a moment,
-      with no flicker at the edges. Scrolling inside the expanded log works
-      and it stays scrolled to the newest line.
-- [ ] The log toggle button (top-right of the panel) cycles Auto → Expanded →
-      Collapsed → Auto on each click, and its label always names the current
-      mode. In Expanded the log stays over the image with no hovering; in
-      Collapsed hovering the log does nothing; back in Auto, hover behaves as
-      before. It works by keyboard and by tap on a phone-width window, and is
-      absent at locations without an image.
-- [ ] Typing in the input does not change the log mode.
+- [ ] Hovering the log does nothing and there is no toggle button; the log
+      scrolls with the wheel and stays on the newest line.
 
 Examine-driven images (placeholder art on the office desk):
 - [ ] In the office (no location image), `examine desk`: the pane appears with

@@ -71,6 +71,9 @@ step (`findPath`, breadth-first). Compass words (`n`, `s`, `up`, ...) still work
 any connection that carries a `compassLabel`; the studio's don't yet. See
 `../systems/navigation.md`.
 
+The log beside the scene image is fixed-size and not expandable (the
+hover/toggle overlay was removed); it still scrolls and stays on the newest line.
+
 ## Not done / open
 
 - Editors, case board and the "city" leftovers (stealth, stats, schedules, NPC

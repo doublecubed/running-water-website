@@ -586,47 +586,12 @@ describe("TerminalView — scene image pane", () => {
     expect(root.querySelector(".scene-image__hotspot")).toBe(before);
   });
 
-  it("cycles the log toggle through auto / expanded / collapsed, defaulting to collapsed, only while an image shows", async () => {
+  it("has no log toggle and never expands the log over the image", () => {
     const { root, engine, log, view } = setUp();
-    const toggle = root.querySelector<HTMLButtonElement>('[data-role="log-toggle"]')!;
-    const update = () => (view as unknown as { updateStatusBar(): void }).updateStatusBar();
-    expect(toggle.hidden).toBe(true);
-    log.dispatchEvent(new Event("mouseenter"));
-    expect(log.classList.contains("terminal__log--expanded")).toBe(false);
-
     engine.getState().locations[engine.getCurrentLocation().id]!.image = IMAGE;
-    update();
-    expect(toggle.hidden).toBe(false);
-    // default: collapsed, hover does nothing
-    expect(toggle.textContent).toBe("Collapsed");
-    expect(toggle.classList.contains("terminal__log-toggle--active")).toBe(true);
-    expect(log.classList.contains("terminal__log--expanded")).toBe(false);
-    log.dispatchEvent(new Event("mouseleave"));
-
-    // auto: hover expands, leaving collapses after a delay
-    toggle.click();
-    expect(toggle.textContent).toBe("Auto");
-    expect(toggle.classList.contains("terminal__log-toggle--active")).toBe(false);
+    (view as unknown as { updateStatusBar(): void }).updateStatusBar();
     log.dispatchEvent(new Event("mouseenter"));
-    expect(log.classList.contains("terminal__log--expanded")).toBe(true);
-    log.dispatchEvent(new Event("mouseleave"));
-    expect(log.classList.contains("terminal__log--expanded")).toBe(true);
-    await new Promise((r) => setTimeout(r, 300));
-    expect(log.classList.contains("terminal__log--expanded")).toBe(false);
-
-    // expanded: always over the image, no hover needed
-    toggle.click();
-    expect(toggle.textContent).toBe("Expanded");
-    expect(log.classList.contains("terminal__log--expanded")).toBe(true);
-    expect(toggle.getAttribute("aria-expanded")).toBe("true");
-    expect(toggle.classList.contains("terminal__log-toggle--active")).toBe(true);
-
-    // back to collapsed
-    toggle.click();
-    expect(toggle.textContent).toBe("Collapsed");
-    expect(log.classList.contains("terminal__log--expanded")).toBe(false);
-    expect(toggle.getAttribute("aria-expanded")).toBe("false");
-    log.dispatchEvent(new Event("mouseenter"));
+    expect(root.querySelector('[data-role="log-toggle"]')).toBeNull();
     expect(log.classList.contains("terminal__log--expanded")).toBe(false);
   });
 });

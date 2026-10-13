@@ -35,13 +35,6 @@ const WORLD_OBJECT_RESOLVERS: Partial<Record<Command["kind"], (engine: GameEngin
   examine: (engine, id) => engine.examine({ id }),
 };
 
-/** Locale key for each log-expansion mode's toggle-button label — see `applyLogExpansion`. */
-const LOG_MODE_LABEL_KEY = {
-  auto: "ui.logModeAuto",
-  expanded: "ui.logModeExpanded",
-  collapsed: "ui.logModeCollapsed",
-} as const;
-
 /** Shared box markup for a side panel's title + item list — see .side-panel in terminal.css. */
 function renderSidePanel(titleKey: string, items: Array<string | { label: string; command: string }>): string {
   // An item with a `command` renders as a button that runs it through the normal input path (see the click handler in the constructor).
@@ -171,12 +164,6 @@ export class TerminalView {
   private readonly imageEl: HTMLElement;
   private readonly logEl: HTMLElement;
   private readonly stageEl: HTMLElement;
-  private readonly logToggleEl: HTMLButtonElement;
-  /** Log expansion mode, cycled by the toggle button: "auto" (hover-expand, default), "expanded" (always over the image), "collapsed" (never, hover does nothing). */
-  private logMode: "auto" | "expanded" | "collapsed" = "collapsed";
-  /** Pointer currently over the log (hover-expand, only consulted in "auto"); collapse is delayed via `logCollapseTimer`. */
-  private logHovered = false;
-  private logCollapseTimer: ReturnType<typeof setTimeout> | undefined;
   /** Whether the log was scrolled to the bottom before its height last changed — see `pinLogToBottomOnResize`. */
   private logStickToBottom = true;
   private readonly inputEl: HTMLInputElement;
@@ -257,7 +244,6 @@ export class TerminalView {
           </div>
           <div class="terminal__stage" data-role="stage">
             <div class="terminal__image" data-role="image" hidden></div>
-            <button type="button" class="terminal__log-toggle terminal__log-toggle--active" data-role="log-toggle" aria-expanded="false" title="${t("ui.logToggleHint")}" hidden>${t("ui.logModeCollapsed")}</button>
             <div class="terminal__log" data-role="log"></div>
           </div>
           <div class="terminal__input-row">
@@ -303,7 +289,6 @@ export class TerminalView {
     this.imageEl = this.root.querySelector('[data-role="image"]')!;
     this.logEl = this.root.querySelector('[data-role="log"]')!;
     this.stageEl = this.root.querySelector('[data-role="stage"]')!;
-    this.logToggleEl = this.root.querySelector('[data-role="log-toggle"]')!;
     this.inputEl = this.root.querySelector('[data-role="input"]')!;
     this.root.querySelector('[data-role="panel-verbs"]')!.innerHTML = renderVerbHints();
     this.panelEls = {
@@ -345,7 +330,7 @@ export class TerminalView {
     this.notebookNewBlockButton.addEventListener("click", () => this.startNewNoteDraft());
     this.root.querySelector('[data-role="notebook-close"]')!.addEventListener("click", () => this.closeNotebookPageView());
     this.logEl.addEventListener("click", (e) => this.handleLogClick(e));
-    this.wireLogExpansion();
+    this.pinLogToBottomOnResize();
     this.updateStatusBar();
     this.inputEl.focus();
   }
@@ -782,40 +767,18 @@ export class TerminalView {
       this.imageDitherSteps,
     );
     this.stageEl.classList.toggle("terminal__stage--has-image", image !== undefined);
-    this.logToggleEl.hidden = image === undefined;
-    this.applyLogExpansion();
 
     this.renderPanelSlot("left");
     this.renderPanelSlot("right");
   }
 
   /**
-   * Hover / toggle-button expansion of the log over the scene image (see
-   * docs/systems/image-pane.md). With an image showing, the log is only a few
-   * lines tall (it is cropped from the top), so hovering it — or pressing the
-   * toggle, which is the touch/keyboard route — lets it overlay the image.
-   * Leaving is delayed slightly so a pointer skimming the edge doesn't
-   * flicker the layout. The log is also kept scrolled to the bottom across
-   * height changes, so a shrink crops OLD lines off the top, not new ones.
+   * Keeps the log scrolled to the bottom across height changes (see
+   * docs/systems/image-pane.md). With an image showing the log is only a few
+   * lines tall (cropped from the top), so a shrink must crop OLD lines off the
+   * top, not new ones. The log is deliberately never expandable.
    */
-  private wireLogExpansion(): void {
-    this.logEl.addEventListener("mouseenter", () => {
-      clearTimeout(this.logCollapseTimer);
-      this.logHovered = true;
-      this.applyLogExpansion();
-    });
-    this.logEl.addEventListener("mouseleave", () => {
-      clearTimeout(this.logCollapseTimer);
-      this.logCollapseTimer = setTimeout(() => {
-        this.logHovered = false;
-        this.applyLogExpansion();
-      }, 250);
-    });
-    this.logToggleEl.addEventListener("click", () => {
-      const order = ["auto", "expanded", "collapsed"] as const;
-      this.logMode = order[(order.indexOf(this.logMode) + 1) % order.length]!;
-      this.applyLogExpansion();
-    });
+  private pinLogToBottomOnResize(): void {
     this.logEl.addEventListener("scroll", () => {
       this.logStickToBottom = this.logEl.scrollHeight - this.logEl.scrollTop - this.logEl.clientHeight < 4;
     });
@@ -825,16 +788,6 @@ export class TerminalView {
         if (this.logStickToBottom) this.logEl.scrollTop = this.logEl.scrollHeight;
       }).observe(this.logEl);
     }
-  }
-
-  /** Syncs the expanded class, toggle label and aria state; only applies while an image is showing. */
-  private applyLogExpansion(): void {
-    const hasImage = !this.imageEl.hidden;
-    const expanded = hasImage && (this.logMode === "expanded" || (this.logMode === "auto" && this.logHovered));
-    this.logEl.classList.toggle("terminal__log--expanded", expanded);
-    this.logToggleEl.setAttribute("aria-expanded", String(expanded));
-    this.logToggleEl.classList.toggle("terminal__log-toggle--active", this.logMode !== "auto");
-    this.logToggleEl.textContent = t(LOG_MODE_LABEL_KEY[this.logMode]);
   }
 
   /**

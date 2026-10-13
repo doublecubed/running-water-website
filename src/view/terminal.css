@@ -55,7 +55,7 @@ body {
   --image-panel-height: clamp(160px, 35vh, 360px);
 }
 
-/* Holds the scene image and the log; the log overlays it when expanded. */
+/* Holds the scene image and the log; the log takes whatever height the image leaves. */
 .terminal__stage {
   position: relative;
   flex: 1;
@@ -873,47 +873,6 @@ body {
   border-color: var(--accent);
   background: rgba(255, 255, 255, 0.08);
   outline: none;
-}
-
-/*
- * With an image showing, the log is cropped from the top (it just gets the
- * remaining height). Expanded (hover, or pinned by the toggle) it overlays
- * the image from the bottom, leaving a strip of the image's top edge visible
- * so hotspots there and the toggle stay reachable.
- */
-.terminal__log--expanded {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  height: calc(100% - var(--image-panel-height) * 0.25);
-  z-index: 2;
-  box-shadow: 0 -6px 16px rgba(0, 0, 0, 0.6);
-}
-
-.terminal__log-toggle {
-  position: absolute;
-  top: 0.35rem;
-  right: 0.35rem;
-  z-index: 3;
-  font: inherit;
-  font-size: 0.75em;
-  color: var(--fg);
-  background: var(--bg);
-  border: 1px solid var(--dim);
-  border-radius: 3px;
-  cursor: pointer;
-}
-
-.terminal__log-toggle[hidden] {
-  display: none;
-}
-
-/* Pinned to "expanded" or "collapsed" rather than the default "auto". */
-.terminal__log-toggle--active {
-  color: var(--bg);
-  background: var(--accent);
-  border-color: var(--accent);
 }
 
 /* A side-panel entry that runs a command when clicked (the locations list). Styled as plain text so the panel keeps its look; hover/focus show it is clickable. */
